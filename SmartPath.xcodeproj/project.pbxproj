@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C9C692112E1B757100634F85 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = C9C692102E1B757100634F85 /* SwiftSoup */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		C9C691B42E1B403300634F85 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C9C692112E1B757100634F85 /* SwiftSoup in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 				C9C691A52E1B403100634F85 /* SmartPath */,
 				C9C691B62E1B403300634F85 /* SmartPathTests */,
 				C9C691C02E1B403300634F85 /* SmartPathUITests */,
+				C9C6920F2E1B757100634F85 /* Frameworks */,
 				C9C691A42E1B403100634F85 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +96,13 @@
 				C9C691BD2E1B403300634F85 /* SmartPathUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C9C6920F2E1B757100634F85 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,6 +125,7 @@
 			);
 			name = SmartPath;
 			packageProductDependencies = (
+				C9C692102E1B757100634F85 /* SwiftSoup */,
 			);
 			productName = SmartPath;
 			productReference = C9C691A32E1B403100634F85 /* SmartPath.app */;
@@ -195,6 +209,9 @@
 			);
 			mainGroup = C9C6919A2E1B403000634F85;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C9C6920E2E1B714800634F85 /* XCRemoteSwiftPackageReference "SwiftSoup" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C9C691A42E1B403100634F85 /* Products */;
 			projectDirPath = "";
@@ -558,6 +575,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C9C6920E2E1B714800634F85 /* XCRemoteSwiftPackageReference "SwiftSoup" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/scinfu/SwiftSoup.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.8;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C9C692102E1B757100634F85 /* SwiftSoup */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C9C6920E2E1B714800634F85 /* XCRemoteSwiftPackageReference "SwiftSoup" */;
+			productName = SwiftSoup;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = C9C6919B2E1B403000634F85 /* Project object */;
 }

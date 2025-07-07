@@ -1,0 +1,7 @@
+//
+//  DatabaseService.swift
+//  SmartPath
+//
+//  Created by Bruno Ndiba Mbwaye Roy on 7/6/25.
+//
+

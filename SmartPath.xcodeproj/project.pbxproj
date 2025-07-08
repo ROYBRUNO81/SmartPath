@@ -33,22 +33,9 @@
 		C9C691BD2E1B403300634F85 /* SmartPathUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmartPathUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		C9C692182E1CC5B700634F85 /* Exceptions for "SmartPath" folder in "SmartPath" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Views/Untitled.swift,
-			);
-			target = C9C691A22E1B403000634F85 /* SmartPath */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C9C691A52E1B403100634F85 /* SmartPath */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				C9C692182E1CC5B700634F85 /* Exceptions for "SmartPath" folder in "SmartPath" target */,
-			);
 			path = SmartPath;
 			sourceTree = "<group>";
 		};

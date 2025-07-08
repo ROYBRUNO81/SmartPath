@@ -9,11 +9,11 @@ import Foundation
 import SwiftData
 
 /// A shared container for all your models
+@MainActor
 class DataService {
   static let shared = DataService()
-  
   let container: ModelContainer
-  
+
   private init() {
     container = try! ModelContainer(
       for: Student.self,
@@ -22,40 +22,41 @@ class DataService {
       Schedule.self
     )
   }
-  
-  // MARK: Student + Major
-  
-    @MainActor func fetchStudent() -> Student? {
+
+  // MARK: Student
+
+  func fetchStudent() -> Student? {
     let context = container.mainContext
-    return try? context.fetch(Student.fetchRequest()).first
+    return try? context.fetch(FetchDescriptor<Student>()).first
   }
-  
+
   func saveStudent(_ student: Student) {
     let context = container.mainContext
-    try? context.save(objects: [student])
+    try? context.save()
   }
-  
+
   // MARK: Courses
-  
+
   func fetchAllCourses() -> [Course] {
     let context = container.mainContext
-    return (try? context.fetch(Course.fetchRequest())) ?? []
+    return (try? context.fetch(FetchDescriptor<Course>())) ?? []
   }
-  
+
   func upsertCourse(_ course: Course) {
     let context = container.mainContext
-    try? context.save(objects: [course])
+    try? context.save()
   }
-  
+
   // MARK: Schedule
-  
+
   func fetchSchedule() -> Schedule? {
     let context = container.mainContext
-    return try? context.fetch(Schedule.fetchRequest()).first
+    return try? context.fetch(FetchDescriptor<Schedule>()).first
   }
-  
+
   func saveSchedule(_ schedule: Schedule) {
     let context = container.mainContext
-    try? context.save(objects: [schedule])
+    try? context.save()
   }
 }
+

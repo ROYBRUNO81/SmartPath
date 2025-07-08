@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23605" systemVersion="24F74" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+    <entity name="CourseEntity" representedClassName="CourseEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="code" optional="YES" attributeType="String"/>
+        <attribute name="credit" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="detail" optional="YES" attributeType="String"/>
+        <attribute name="difficulty" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="prerequisites" optional="YES" attributeType="Transformable"/>
+        <attribute name="semestersOffered" optional="YES" attributeType="Transformable"/>
+        <attribute name="title" optional="YES" attributeType="String"/>
+        <attribute name="weeklyHours" optional="YES" attributeType="Transformable"/>
+    </entity>
+    <entity name="MajorEntity" representedClassName="MajorEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="creditRequired" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="requiredCourses" optional="YES" attributeType="Transformable"/>
+        <relationship name="relationship" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="StudentEntity" inverseName="relationship1" inverseEntity="StudentEntity"/>
+    </entity>
+    <entity name="PlanItemEntity" representedClassName="PlanItemEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="semester" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="relationship" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="CourseEntity"/>
+        <relationship name="relationship1" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="StudentEntity" inverseName="relationship" inverseEntity="StudentEntity"/>
+    </entity>
+    <entity name="StudentEntity" representedClassName="StudentEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="gpa" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="schoolYear" optional="YES" attributeType="String"/>
+        <attribute name="studentID" optional="YES" attributeType="String"/>
+        <attribute name="term" optional="YES" attributeType="String"/>
+        <relationship name="relationship" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="PlanItemEntity" inverseName="relationship1" inverseEntity="PlanItemEntity"/>
+        <relationship name="relationship1" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="MajorEntity" inverseName="relationship" inverseEntity="MajorEntity"/>
+    </entity>
+</model>

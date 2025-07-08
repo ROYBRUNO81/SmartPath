@@ -5,22 +5,35 @@
 //  Created by Bruno Ndiba Mbwaye Roy on 7/6/25.
 //
 
-import Foundation
+import SwiftData
 
-struct Semester: Codable, Identifiable {
-    let id: Int
-    var courses: [String]
-
-    init(id: Int, courses: [String] = []) {
-        self.id = id
-        self.courses = courses
+@Model
+class Schedule {
+  // 8 semesters arrays of course codes
+  var coursesBySemester: [[String]]
+  
+  init(coursesBySemester: [[String]] = Array(repeating: [], count: 8)) {
+    self.coursesBySemester = coursesBySemester
+  }
+  
+  var currentSemesterIndex: Int {
+    // derive from student.schoolYear & term if needed
+    0
+  }
+  
+  func add(course code: String, to semester: Int) {
+    guard semester < coursesBySemester.count else { return }
+    if !coursesBySemester[semester].contains(code) {
+      coursesBySemester[semester].append(code)
     }
+  }
+  
+  func move(course code: String, to semester: Int) {
+    // remove from others
+    for i in coursesBySemester.indices {
+      coursesBySemester[i].removeAll { $0 == code }
+    }
+    add(course: code, to: semester)
+  }
 }
 
-struct Plan: Codable {
-    var semesters: [Semester]
-
-    init() {
-        self.semesters = (0..<8).map { Semester(id: $0) }
-    }
-}

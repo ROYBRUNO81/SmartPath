@@ -5,7 +5,9 @@
 //  Created by Bruno Ndiba Mbwaye Roy on 7/6/25.
 //
 
+import SwiftUI
 import SwiftData
+import UIKit
 
 @Model
 class Student {
@@ -14,27 +16,35 @@ class Student {
   var schoolYear: String
   var term: String
   var gpa: Double
-  
-  // One-to-one
+    
+  @Attribute(.externalStorage) var photoData: Data?
+
   var major: Major
-  
-  // Owns a Schedule instance
   var schedule: Schedule
-  
-  init(studentID: String,
-       name: String,
-       schoolYear: String,
-       term: String,
-       gpa: Double,
-       major: Major,
-       schedule: Schedule)
-  {
+
+  init(
+    studentID: String,
+    name: String,
+    schoolYear: String,
+    term: String,
+    gpa: Double,
+    photoData: Data? = nil,
+    major: Major,
+    schedule: Schedule
+  ) {
     self.studentID  = studentID
     self.name       = name
     self.schoolYear = schoolYear
     self.term       = term
     self.gpa        = gpa
+    self.photoData  = photoData
     self.major      = major
     self.schedule   = schedule
+  }
+
+  /// Convert stored Data into SwiftUI Image
+  var photo: Image? {
+    guard let data = photoData, let ui = UIImage(data: data) else { return nil }
+    return Image(uiImage: ui)
   }
 }

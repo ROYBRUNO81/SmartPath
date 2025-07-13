@@ -1,13 +1,13 @@
 //
-//  p.swift
+//  MenuView.swift
 //  SmartPath
 //
-//  Created by Bruno Ndiba Mbwaye Roy on 7/7/25.
+//  Created by Bruno Ndiba Mbwaye Roy on 7/11/25.
 //
 
 import SwiftUI
 
-struct HomeView: View {
+struct MenuView: View {
     var body: some View {
         GradientBackground()
     }

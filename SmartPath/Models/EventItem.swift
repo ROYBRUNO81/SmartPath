@@ -12,6 +12,8 @@ enum EventType: String, CaseIterable, Codable, Identifiable {
     case interview    = "Interview"
     case coffeeChat   = "Coffee chat"
     case campusEvent  = "Campus event"
+    case exam         = "Exam"
+    case holiday      = "Holiday"
     var id: String { rawValue }
 }
 

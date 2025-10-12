@@ -12,8 +12,12 @@ struct BlurView: UIViewRepresentable {
     let style: UIBlurEffect.Style
 
     func makeUIView(context: Context) -> UIVisualEffectView {
-        UIVisualEffectView(effect: UIBlurEffect(style: style))
+        let view = UIVisualEffectView(effect: UIBlurEffect(style: style))
+        view.isUserInteractionEnabled = false
+        return view
     }
 
-    func updateUIView(_ uiView: UIVisualEffectView, context: Context) { }
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+        uiView.isUserInteractionEnabled = false
+    }
 }

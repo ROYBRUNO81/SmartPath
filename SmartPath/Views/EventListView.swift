@@ -124,6 +124,8 @@ private struct EventRow: View {
         case .interview:    return "💼"
         case .coffeeChat:   return "☕️"
         case .campusEvent:  return "🎉"
+        case .exam:         return "🧪"
+        case .holiday:      return "🏖"
         }
     }
 
@@ -133,6 +135,8 @@ private struct EventRow: View {
         case .interview:    return .green
         case .coffeeChat:   return .orange
         case .campusEvent:  return .purple
+        case .exam:         return .red
+        case .holiday:      return .teal
         }
     }
 

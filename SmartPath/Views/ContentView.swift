@@ -20,7 +20,7 @@ struct ContentView: View {
       Group {
         switch selection {
         case .home:     HomeView()
-        case .calendar: CalendarView()
+        case .calendar: PlannerCalendarView()
         case .menu:     MenuView()
         case .profile:  ProfileView(context: context)
         }
@@ -44,7 +44,7 @@ struct ContentView: View {
             Image(systemName: "plus.circle.fill")
               .resizable()
               .frame(width: 56, height: 56)
-              .foregroundColor(.accentColor)
+              .foregroundColor(Color.spPrimary)
               .background(Color(.systemBackground).clipShape(Circle()))
               .offset(y: -20)
           }
@@ -81,7 +81,7 @@ struct TabButton: View {
     Button(action: action) {
       Image(systemName: system)
         .font(.system(size: 24))
-        .foregroundColor(isSelected ? .accentColor : .secondary)
+        .foregroundColor(isSelected ? Color.spPrimary : Color.spPrimary.opacity(0.5))
     }
   }
 }

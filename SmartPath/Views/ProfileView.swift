@@ -37,7 +37,7 @@ struct ProfileView: View {
                                 .overlay(
                                     Image(systemName: "person.crop.circle.fill")
                                         .font(.system(size: 60))
-                                        .foregroundColor(.secondary)
+                                .foregroundColor(Color.spSecondary)
                                 )
                         }
 
@@ -60,10 +60,10 @@ struct ProfileView: View {
                                 count: 3,
                                 subtitle: "Next 7 days",
                                 gradientColors: [
-                                    Color.yellow.opacity(0.25),
+                                    Color.spPrimary.opacity(0.15),
                                     Color.white.opacity(0.7)
                                 ],
-                                countColor: Color.orange
+                                countColor: Color.spPrimary
                               )
                             }
 
@@ -74,10 +74,10 @@ struct ProfileView: View {
                                 count: 4,
                                 subtitle: "Next 7 days",
                                 gradientColors: [
-                                    Color.pink.opacity(0.25),
+                                    Color.spSecondary.opacity(0.15),
                                     Color.white.opacity(0.7)
                                 ],
-                                countColor: Color.pink
+                                countColor: Color.spSecondary
                               )
                             }
                         }

@@ -20,10 +20,32 @@ struct ContentView: View {
     ZStack {
       Group {
         switch selection {
-        case .home:     HomeView()
-        case .calendar: PlannerCalendarView()
-        case .menu:     MenuView()
-        case .profile:  ProfileView(context: context)
+        case .home:     
+          NavigationStack { 
+            HomeView()
+              .navigationDestination(isPresented: $pushAdd) {
+                AddNewView()
+              }
+          }
+        case .calendar: 
+          NavigationStack { 
+            PlannerCalendarView()
+              .navigationDestination(isPresented: $pushAdd) {
+                AddNewView()
+              }
+          }
+        case .menu:     
+          NavigationStack { 
+            MenuView()
+              .navigationDestination(isPresented: $pushAdd) {
+                AddNewView()
+              }
+          }
+        case .profile:  
+          ProfileView(context: context)
+            .navigationDestination(isPresented: $pushAdd) {
+              AddNewView()
+            }
         }
       }
       .edgesIgnoringSafeArea(.all)
@@ -41,7 +63,7 @@ struct ContentView: View {
           }
           Spacer()
 
-          NavigationLink(destination: AddNewView()) {
+          Button(action: { pushAdd = true }) {
             Image(systemName: "plus.circle.fill")
               .resizable()
               .frame(width: 56, height: 56)

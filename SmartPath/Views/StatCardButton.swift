@@ -2,7 +2,7 @@
 //  StatCardButton.swift
 //  SmartPath
 //
-//  Created by Assistant on 10/12/25.
+//  Created by Bruno Ndiba Mbwaye Roy on 10/12/25.
 //
 
 import SwiftUI

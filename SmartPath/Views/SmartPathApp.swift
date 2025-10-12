@@ -24,10 +24,8 @@ struct SmartPathApp: App {
 
   var body: some Scene {
     WindowGroup {
-      NavigationStack {
-        ContentView()
-      }
-      .modelContainer(container)
+      ContentView()
+        .modelContainer(container)
     }
   }
 }

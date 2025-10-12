@@ -56,12 +56,12 @@ struct ProfileView: View {
                     .padding(.top, 20)
                 }
                 .navigationTitle("Profile")
-                .navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.large)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button { vm.startEditing() } label: {
                             Image(systemName: "pencil")
-                                .foregroundColor(.white)
+                                .foregroundColor(.black)
                         }
                     }
                 }
@@ -78,10 +78,10 @@ struct ProfileView: View {
             HStack {
                 Text(label)
                     .bold()
-                    .foregroundColor(.white)
+                    .foregroundColor(.black)
                 Spacer()
                 Text(value)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.black.opacity(0.8))
             }
             .padding(.vertical, 4)
         }

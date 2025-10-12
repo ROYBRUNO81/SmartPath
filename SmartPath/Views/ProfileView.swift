@@ -51,6 +51,38 @@ struct ProfileView: View {
                         }
                         .padding(.horizontal)
 
+                        // Cards row
+                        HStack(spacing: 12) {
+                            NavigationLink(destination: TaskListView(tasks: TaskItem.sampleData())) {
+                              StatCardButton(
+                                emoji: "👀",
+                                title: "Pending Tasks",
+                                count: 3,
+                                subtitle: "Next 7 days",
+                                gradientColors: [
+                                    Color.yellow.opacity(0.25),
+                                    Color.white.opacity(0.7)
+                                ],
+                                countColor: Color.orange
+                              )
+                            }
+
+                            NavigationLink(destination: EventListView(events: EventItem.sampleData())) {
+                              StatCardButton(
+                                emoji: "📅",
+                                title: "Upcoming Events",
+                                count: 4,
+                                subtitle: "Next 7 days",
+                                gradientColors: [
+                                    Color.pink.opacity(0.25),
+                                    Color.white.opacity(0.7)
+                                ],
+                                countColor: Color.pink
+                              )
+                            }
+                        }
+                        .padding(.horizontal)
+
                         Spacer()
                     }
                     .padding(.top, 20)

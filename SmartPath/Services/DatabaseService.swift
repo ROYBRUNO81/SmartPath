@@ -19,7 +19,10 @@ class DataService {
       for: Student.self,
       Major.self,
       Course.self,
-      Schedule.self
+      Schedule.self,
+      TaskRecord.self,
+      ExamRecord.self,
+      ClassRecord.self
     )
   }
 

@@ -16,13 +16,18 @@ struct SmartPathApp: App {
     for: Student.self,
     Major.self,
     Course.self,
-    Schedule.self
+    Schedule.self,
+    TaskRecord.self,
+    ExamRecord.self,
+    ClassRecord.self
   )
 
   var body: some Scene {
     WindowGroup {
-      ContentView()
-        .modelContainer(container)
+      NavigationStack {
+        ContentView()
+      }
+      .modelContainer(container)
     }
   }
 }

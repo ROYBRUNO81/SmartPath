@@ -123,14 +123,19 @@ private struct DayView: View {
     let tasks: [TaskItem]
     @State private var now: Date = Date()
     private let hourRowHeight: CGFloat = 56
+    private let labelColumnWidth: CGFloat = 64 // label (56) + left padding (8)
+    private let topInsetForDayBadge: CGFloat = 52
 
     var body: some View {
         ScrollView {
             ZStack(alignment: .topLeading) {
                 hourGrid
+                    .padding(.top, topInsetForDayBadge)
                 if isToday {
                     currentTimeIndicator
+                        .offset(y: topInsetForDayBadge)
                 }
+                dayBadge
             }
             .padding(.top, 8)
         }
@@ -143,25 +148,45 @@ private struct DayView: View {
     private var hourGrid: some View {
         VStack(spacing: 0) {
             ForEach(0..<24) { h in
-                HStack {
-                    Text(hourLabel(h))
-                        .foregroundColor(.black.opacity(0.6))
-                        .frame(width: 56, alignment: .leading)
-                        .padding(.leading, 8)
+                HStack(alignment: .top, spacing: 0) {
+                    // Hour label aligned to the start of the hour (row top)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(hourLabel(h))
+                            .foregroundColor(.black.opacity(0.55))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Spacer()
+                    }
+                    .frame(width: 56)
+                    .padding(.leading, 8)
+
+                    // Events pane filler
                     Rectangle().fill(Color.clear)
                     Spacer(minLength: 0)
                 }
                 .frame(height: hourRowHeight)
-                .overlay(
-                    VStack { Spacer(); Divider().opacity(0.1) }
-                )
+                // Faint separator placed at the top of the row (start of the hour), only across events pane
+                .overlay(alignment: .topLeading) {
+                    HStack(spacing: 0) {
+                        Spacer().frame(width: labelColumnWidth)
+                        Rectangle()
+                            .fill(Color.spSecondary.opacity(0.05))
+                            .frame(height: 1)
+                    }
+                }
             }
+        }
+        // Vertical separator between labels and events area
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(Color.spSecondary.opacity(0.08))
+                .frame(width: 1)
+                .offset(x: labelColumnWidth)
         }
     }
 
     private var currentTimeIndicator: some View {
         let y = CGFloat(minutesIntoDay()) / 60.0 * hourRowHeight
-        let startX: CGFloat = 62 + 4 // align line start with dot center
+        let startX: CGFloat = labelColumnWidth // dot center on the vertical separator
         return ZStack(alignment: .topLeading) {
             // Line from dot center to the right only
             HStack(spacing: 0) {
@@ -199,6 +224,31 @@ private struct DayView: View {
 
     private var isToday: Bool {
         Calendar.current.isDate(anchor, inSameDayAs: now)
+    }
+
+    private var dayBadge: some View {
+        let cal = Calendar.current
+        let weekday = DateFormatter.localizedString(from: anchor, dateStyle: .full, timeStyle: .none)
+        let shortWeek = weekday.components(separatedBy: ",").first?.prefix(3).uppercased() ?? "TOD"
+        let dayNum = cal.component(.day, from: anchor)
+        return VStack(spacing: 6) {
+            Text(shortWeek)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(Color.spSecondary)
+            Text("\(dayNum)")
+                .font(.headline)
+                .foregroundColor(isToday ? .white : Color.spPrimary)
+                .frame(width: 30, height: 30)
+                .background(
+                    Circle().fill(isToday ? Color.spPrimary : Color.clear)
+                )
+                .overlay(
+                    Circle().stroke(Color.spPrimary, lineWidth: 2)
+                )
+        }
+        .frame(width: 56, alignment: .center)
+        .offset(x: 4, y: -2)
     }
 }
 

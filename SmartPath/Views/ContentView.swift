@@ -13,6 +13,7 @@ struct ContentView: View {
 
   @State private var selection: Tab = .home
   @State private var showingAdd = false
+  @State private var pushAdd = false
   @Environment(\.modelContext) private var context
 
   var body: some View {
@@ -40,7 +41,7 @@ struct ContentView: View {
           }
           Spacer()
 
-          Button(action: { showingAdd = true }) {
+          NavigationLink(destination: AddNewView()) {
             Image(systemName: "plus.circle.fill")
               .resizable()
               .frame(width: 56, height: 56)
@@ -48,11 +49,7 @@ struct ContentView: View {
               .background(Color(.systemBackground).clipShape(Circle()))
               .offset(y: -20)
           }
-          .sheet(isPresented: $showingAdd) {
-            Text("Add…")
-              .font(.largeTitle)
-              .padding()
-          }
+          .buttonStyle(.plain)
           Spacer()
 
           TabButton(system: "list.dash",   isSelected: selection == .menu) {
@@ -70,6 +67,7 @@ struct ContentView: View {
       }
     }
   }
+  // Navigation handled by explicit NavigationLink above
 }
 
 struct TabButton: View {

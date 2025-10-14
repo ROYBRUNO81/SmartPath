@@ -78,11 +78,9 @@ struct ProfileView: View {
 
                         // Info rows
                         VStack(alignment: .leading, spacing: 12) {
-                            InfoRow(label: "Student ID", value: vm.student.studentID)
-                            InfoRow(label: "Name",       value: vm.student.name)
-                            InfoRow(label: "Year",       value: vm.student.schoolYear)
-                            InfoRow(label: "Term",       value: vm.student.term)
-                            InfoRow(label: "GPA",        value: String(format: "%.2f", vm.student.gpa))
+                            InfoRow(label: "First Name", value: vm.student.firstName)
+                            InfoRow(label: "Last Name",  value: vm.student.lastName)
+                            InfoRow(label: "Email",      value: vm.student.email)
                         }
                         .padding(.horizontal)
 

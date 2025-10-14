@@ -13,11 +13,9 @@ class ProfileViewModel: ObservableObject {
     @Published var student: Student
     
     // Editable drafts - Give default values to fix initialization error
-    @Published var draftID: String = ""
-    @Published var draftName: String = ""
-    @Published var draftYear: String = ""
-    @Published var draftTerm: String = ""
-    @Published var draftGPA: String = ""
+    @Published var draftFirstName: String = ""
+    @Published var draftLastName: String = ""
+    @Published var draftEmail: String = ""
     @Published var draftPhotoData: Data? = nil
     @Published var draftImage: Image? = nil
 
@@ -34,11 +32,9 @@ class ProfileViewModel: ObservableObject {
             self.student = existingStudent
         } else {
             let newStudent = Student(
-                studentID: UUID().uuidString,
-                name: "",
-                schoolYear: "",
-                term: "",
-                gpa: 0,
+                firstName: "",
+                lastName: "",
+                email: "",
                 photoData: nil,
                 major: Major(name: "", requiredCourses: [], creditRequired: 0),
                 schedule: Schedule()
@@ -52,11 +48,9 @@ class ProfileViewModel: ObservableObject {
     }
     
     private func populateDrafts() {
-        draftID = student.studentID
-        draftName = student.name
-        draftYear = student.schoolYear
-        draftTerm = student.term
-        draftGPA = String(student.gpa)
+        draftFirstName = student.firstName
+        draftLastName = student.lastName
+        draftEmail = student.email
         draftPhotoData = student.photoData
         
         if let data = student.photoData, let uiImage = UIImage(data: data) {
@@ -78,11 +72,9 @@ class ProfileViewModel: ObservableObject {
 
     func save() {
         // Commit drafts
-        student.studentID = draftID
-        student.name = draftName
-        student.schoolYear = draftYear
-        student.term = draftTerm
-        student.gpa = Double(draftGPA) ?? student.gpa
+        student.firstName = draftFirstName
+        student.lastName = draftLastName
+        student.email = draftEmail
         student.photoData = draftPhotoData
         
         try? context.save()

@@ -15,6 +15,23 @@ class SampleDataService {
             return // Data already exists
         }
         
+        // Create a default Major and Schedule
+        let defaultMajor = Major(name: "Computer Science", requiredCourses: ["CIS120", "CIS121"], creditRequired: 32)
+        let defaultSchedule = Schedule()
+        context.insert(defaultMajor)
+        context.insert(defaultSchedule)
+        
+        // Create a default Student
+        let student = Student(
+            firstName: "John",
+            lastName: "Doe",
+            email: "john.doe@upenn.edu",
+            photoData: nil,
+            major: defaultMajor,
+            schedule: defaultSchedule
+        )
+        context.insert(student)
+        
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         

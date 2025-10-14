@@ -11,11 +11,9 @@ import UIKit
 
 @Model
 class Student {
-  @Attribute(.unique) var studentID: String
-  var name: String
-  var schoolYear: String
-  var term: String
-  var gpa: Double
+  var firstName: String
+  var lastName: String
+  var email: String
     
   @Attribute(.externalStorage) var photoData: Data?
 
@@ -23,20 +21,16 @@ class Student {
   var schedule: Schedule
 
   init(
-    studentID: String,
-    name: String,
-    schoolYear: String,
-    term: String,
-    gpa: Double,
+    firstName: String,
+    lastName: String,
+    email: String,
     photoData: Data? = nil,
     major: Major,
     schedule: Schedule
   ) {
-    self.studentID  = studentID
-    self.name       = name
-    self.schoolYear = schoolYear
-    self.term       = term
-    self.gpa        = gpa
+    self.firstName  = firstName
+    self.lastName   = lastName
+    self.email      = email
     self.photoData  = photoData
     self.major      = major
     self.schedule   = schedule

@@ -12,6 +12,7 @@ struct HomeView: View {
     @Environment(\.modelContext) private var context
     @State private var refreshTrigger = false
     @State private var selectedFilter: EventFilter = .classes
+    @State private var student: Student?
     
     enum EventFilter {
         case classes, exams, tasks
@@ -52,6 +53,9 @@ struct HomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshCalendar"))) { _ in
             refreshTrigger.toggle()
         }
+        .onAppear {
+            loadStudent()
+        }
     }
     
     private var topSection: some View {
@@ -60,7 +64,7 @@ struct HomeView: View {
                 .font(.title)
                 .foregroundColor(Color.spSecondary)
             
-            Text("John") // TODO: Get from user profile
+            Text(student?.firstName ?? "Student")
                 .font(.system(size: 36, weight: .bold))
                 .foregroundColor(Color.spSecondary)
             
@@ -373,6 +377,12 @@ struct HomeView: View {
             return formatter.date(from: firstTime) ?? Date()
         }
         return Date()
+    }
+    
+    private func loadStudent() {
+        if let fetchedStudent = try? context.fetch(FetchDescriptor<Student>()).first {
+            student = fetchedStudent
+        }
     }
 }
 

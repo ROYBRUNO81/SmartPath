@@ -41,12 +41,11 @@ struct EditProfileView: View {
                     }
                     .padding(.vertical)
 
-                    TextField("Student ID", text: $viewModel.draftID)
-                    TextField("Name",       text: $viewModel.draftName)
-                    TextField("Year",       text: $viewModel.draftYear)
-                    TextField("Term",       text: $viewModel.draftTerm)
-                    TextField("GPA",        text: $viewModel.draftGPA)
-                      .keyboardType(.decimalPad)
+                    TextField("First Name", text: $viewModel.draftFirstName)
+                    TextField("Last Name",  text: $viewModel.draftLastName)
+                    TextField("Email",      text: $viewModel.draftEmail)
+                      .keyboardType(.emailAddress)
+                      .autocapitalization(.none)
                 }
             }
             .navigationTitle("Edit Profile")

@@ -10,6 +10,8 @@ import Combine
 
 struct PlannerCalendarView: View {
     @StateObject private var vm = CalendarViewModel()
+    @Environment(\.modelContext) private var context
+    @State private var refreshTrigger = false
 
     var body: some View {
         NavigationStack {
@@ -24,7 +26,8 @@ struct PlannerCalendarView: View {
 
                     switch vm.mode {
                     case .day:
-                        DayView(anchor: vm.anchorDate, events: vm.visibleEvents(in: dayInterval), tasks: vm.visibleTasks(in: dayInterval))
+                        DayView(anchor: vm.anchorDate, displayEvents: vm.fetchDisplayEvents(for: vm.anchorDate))
+                            .id("\(vm.anchorDate.timeIntervalSince1970)-\(refreshTrigger)")
                     case .week:
                         WeekView(anchor: vm.anchorDate, events: vm.visibleEvents(in: weekInterval))
                     case .month:
@@ -35,6 +38,25 @@ struct PlannerCalendarView: View {
                 if vm.showMenu { SideFilterMenu(vm: vm) }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 80)
+            }
+            .onAppear {
+                vm.setContext(context)
+                refreshTrigger.toggle()
+            }
+            .onChange(of: vm.anchorDate) { _, _ in
+                refreshTrigger.toggle()
+            }
+            .onChange(of: vm.showTasks) { _, _ in
+                refreshTrigger.toggle()
+            }
+            .onChange(of: vm.showClasses) { _, _ in
+                refreshTrigger.toggle()
+            }
+            .onChange(of: vm.showExams) { _, _ in
+                refreshTrigger.toggle()
+            }
         }
     }
 
@@ -119,8 +141,7 @@ struct PlannerCalendarView: View {
 
 private struct DayView: View {
     let anchor: Date
-    let events: [EventItem]
-    let tasks: [TaskItem]
+    let displayEvents: [DisplayEvent]
     @State private var now: Date = Date()
     private let hourRowHeight: CGFloat = 56
     private let labelColumnWidth: CGFloat = 64 // label (56) + left padding (8)
@@ -130,6 +151,8 @@ private struct DayView: View {
         ScrollView {
             ZStack(alignment: .topLeading) {
                 hourGrid
+                    .padding(.top, topInsetForDayBadge)
+                eventsOverlay
                     .padding(.top, topInsetForDayBadge)
                 if isToday {
                     currentTimeIndicator
@@ -249,6 +272,78 @@ private struct DayView: View {
         }
         .frame(width: 56, alignment: .center)
         .offset(x: 4, y: -2)
+    }
+    
+    private var eventsOverlay: some View {
+        GeometryReader { geometry in
+            ForEach(displayEvents) { event in
+                EventCard(event: event)
+                    .offset(x: labelColumnWidth + 4, y: yOffset(for: event.startTime))
+                    .frame(width: geometry.size.width - labelColumnWidth - 8, height: eventHeight(event))
+            }
+        }
+    }
+    
+    private func yOffset(for time: Date) -> CGFloat {
+        let cal = Calendar.current
+        let components = cal.dateComponents([.hour, .minute], from: time)
+        let hour = CGFloat(components.hour ?? 0)
+        let minute = CGFloat(components.minute ?? 0)
+        return (hour * hourRowHeight) + (minute / 60.0 * hourRowHeight)
+    }
+    
+    private func eventHeight(_ event: DisplayEvent) -> CGFloat {
+        let duration = event.endTime.timeIntervalSince(event.startTime)
+        let hours = duration / 3600.0
+        return CGFloat(hours) * hourRowHeight
+    }
+}
+
+private struct EventCard: View {
+    let event: DisplayEvent
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(event.title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.black)
+                    Text(event.type)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(typeColor(event.type))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(typeColor(event.type).opacity(0.15))
+                        .cornerRadius(4)
+                }
+                if !event.subtitle.isEmpty {
+                    Text(event.subtitle)
+                        .font(.system(size: 12))
+                        .foregroundColor(.black.opacity(0.7))
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color(hex: event.colorHex).opacity(0.25))
+        .overlay(
+            Rectangle()
+                .fill(Color(hex: event.colorHex))
+                .frame(width: 4),
+            alignment: .leading
+        )
+        .cornerRadius(8)
+    }
+    
+    private func typeColor(_ type: String) -> Color {
+        switch type {
+        case "Class": return Color(hex: "#9B59B6")
+        case "Task": return Color(hex: "#3498DB")
+        case "Exam": return Color(hex: "#1ABC9C")
+        default: return Color.gray
+        }
     }
 }
 

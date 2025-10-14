@@ -12,43 +12,73 @@ import Foundation
 class TaskRecord {
   var title: String
   var details: String
-  var subject: String
   var occurs: String // "Once" or "Repeating"
-  var dueDate: Date
+  var dueDate: Date // For "Once" tasks
   var dueTime: Date
+  var colorHex: String
+  // For repeating tasks
+  var days: [String] // Days of week for repeating
+  var startDate: Date? // Start date for repeating
+  var endDate: Date? // End date for repeating
 
-  init(title: String, details: String, subject: String, occurs: String, dueDate: Date, dueTime: Date) {
+  init(title: String, details: String, occurs: String, dueDate: Date, dueTime: Date, days: [String] = [], startDate: Date? = nil, endDate: Date? = nil, colorHex: String = "") {
     self.title = title
     self.details = details
-    self.subject = subject
     self.occurs = occurs
     self.dueDate = dueDate
     self.dueTime = dueTime
+    self.days = days
+    self.startDate = startDate
+    self.endDate = endDate
+    self.colorHex = colorHex.isEmpty ? Self.randomColor() : colorHex
+  }
+  
+  static func randomColor() -> String {
+    let colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B195", "#C06C84"]
+    return colors.randomElement() ?? "#4ECDC4"
   }
 }
 
 @Model
 class ExamRecord {
   var name: String
-  var subject: String
-  var examType: String // Exam, Quiz, Test
+  var examType: String // "Midterm 1", "Midterm 2", "Final", "Quiz", "Other"
+  var customType: String // For "Other" type
   var mode: String // In Person, Online
-  var seat: String
   var room: String
-  var date: Date
+  var building: String
+  var link: String // For online mode
+  var date: Date // Single date for non-repeating
   var time: Date
   var durationMinutes: Int
+  var colorHex: String
+  // For repeating quizzes
+  var isRepeating: Bool
+  var days: [String] // Days of week for repeating quizzes
+  var startDate: Date? // Start date for repeating
+  var endDate: Date? // End date for repeating
 
-  init(name: String, subject: String, examType: String, mode: String, seat: String, room: String, date: Date, time: Date, durationMinutes: Int) {
+  init(name: String, examType: String, customType: String = "", mode: String, room: String, building: String, link: String = "", date: Date, time: Date, durationMinutes: Int, isRepeating: Bool = false, days: [String] = [], startDate: Date? = nil, endDate: Date? = nil, colorHex: String = "") {
     self.name = name
-    self.subject = subject
     self.examType = examType
+    self.customType = customType
     self.mode = mode
-    self.seat = seat
     self.room = room
+    self.building = building
+    self.link = link
     self.date = date
     self.time = time
     self.durationMinutes = durationMinutes
+    self.isRepeating = isRepeating
+    self.days = days
+    self.startDate = startDate
+    self.endDate = endDate
+    self.colorHex = colorHex.isEmpty ? Self.randomColor() : colorHex
+  }
+  
+  static func randomColor() -> String {
+    let colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B195", "#C06C84"]
+    return colors.randomElement() ?? "#4ECDC4"
   }
 }
 
@@ -59,23 +89,30 @@ class ClassRecord {
   var room: String
   var building: String
   var teacher: String
-  var subject: String
-  var occurs: String // Once, Repeating
-  var days: [String] // Mon..Sun
-  var startTime: Date
-  var endTime: Date
+  var days: [String] // Mon..Sun - days of week this class occurs
+  var startTime: Date // Time of day class starts
+  var endTime: Date // Time of day class ends
+  var startDate: Date // First date of the class
+  var endDate: Date // Last date of the class
+  var colorHex: String
 
-  init(mode: String, className: String, room: String, building: String, teacher: String, subject: String, occurs: String, days: [String], startTime: Date, endTime: Date) {
+  init(mode: String, className: String, room: String, building: String, teacher: String, days: [String], startTime: Date, endTime: Date, startDate: Date, endDate: Date, colorHex: String = "") {
     self.mode = mode
     self.className = className
     self.room = room
     self.building = building
     self.teacher = teacher
-    self.subject = subject
-    self.occurs = occurs
     self.days = days
     self.startTime = startTime
     self.endTime = endTime
+    self.startDate = startDate
+    self.endDate = endDate
+    self.colorHex = colorHex.isEmpty ? Self.randomColor() : colorHex
+  }
+  
+  static func randomColor() -> String {
+    let colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B195", "#C06C84"]
+    return colors.randomElement() ?? "#4ECDC4"
   }
 }
 

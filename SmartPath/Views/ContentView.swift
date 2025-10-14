@@ -13,7 +13,6 @@ struct ContentView: View {
 
   @State private var selection: Tab = .home
   @State private var showingAdd = false
-  @State private var pushAdd = false
   @Environment(\.modelContext) private var context
 
   var body: some View {
@@ -23,32 +22,19 @@ struct ContentView: View {
         case .home:     
           NavigationStack { 
             HomeView()
-              .navigationDestination(isPresented: $pushAdd) {
-                AddNewView()
-              }
           }
         case .calendar: 
           NavigationStack { 
             PlannerCalendarView()
-              .navigationDestination(isPresented: $pushAdd) {
-                AddNewView()
-              }
           }
         case .menu:     
           NavigationStack { 
             MenuView()
-              .navigationDestination(isPresented: $pushAdd) {
-                AddNewView()
-              }
           }
         case .profile:  
           ProfileView(context: context)
-            .navigationDestination(isPresented: $pushAdd) {
-              AddNewView()
-            }
         }
       }
-      .edgesIgnoringSafeArea(.all)
 
       VStack {
         Spacer()
@@ -63,7 +49,7 @@ struct ContentView: View {
           }
           Spacer()
 
-          Button(action: { pushAdd = true }) {
+          Button(action: { showingAdd = true }) {
             Image(systemName: "plus.circle.fill")
               .resizable()
               .frame(width: 56, height: 56)
@@ -88,8 +74,20 @@ struct ContentView: View {
         .background(BlurView(style: .systemMaterial))
       }
     }
+    .sheet(isPresented: $showingAdd) {
+      NavigationStack {
+        AddNewView()
+          .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+              Button("Done") {
+                showingAdd = false
+              }
+              .foregroundColor(Color.spPrimary)
+            }
+          }
+      }
+    }
   }
-  // Navigation handled by explicit NavigationLink above
 }
 
 struct TabButton: View {

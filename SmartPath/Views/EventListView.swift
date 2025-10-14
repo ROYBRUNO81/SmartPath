@@ -58,6 +58,9 @@ struct EventListView: View {
         }
         .navigationTitle("Upcoming Events")
         .navigationBarTitleDisplayMode(.large)
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 80)
+        }
     }
 
     private func header(_ date: Date, count: Int) -> some View {

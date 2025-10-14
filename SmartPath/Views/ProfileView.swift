@@ -100,6 +100,9 @@ struct ProfileView: View {
                 .sheet(isPresented: $vm.isEditing) {
                     EditProfileView(viewModel: vm)
                 }
+                .safeAreaInset(edge: .bottom) {
+                    Color.clear.frame(height: 80)
+                }
             }
         }
     }

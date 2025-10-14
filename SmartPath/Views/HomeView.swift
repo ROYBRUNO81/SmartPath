@@ -10,5 +10,8 @@ import SwiftUI
 struct HomeView: View {
     var body: some View {
         GradientBackground()
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 80)
+            }
     }
 }

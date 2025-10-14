@@ -22,9 +22,9 @@ struct AddNewView: View {
         tabBar
         Group {
           switch selected {
-          case .task: TaskForm(context: context)
-          case .classes: ClassForm(context: context)
-          case .exam: ExamForm(context: context)
+          case .task: TaskForm(context: context, dismiss: dismiss)
+          case .classes: ClassForm(context: context, dismiss: dismiss)
+          case .exam: ExamForm(context: context, dismiss: dismiss)
           }
         }
       }
@@ -65,23 +65,31 @@ struct AddNewView: View {
 
 private struct TaskForm: View {
   let context: ModelContext
+  let dismiss: DismissAction
   @State private var title = ""
   @State private var details = ""
-  @State private var subject = ""
   @State private var occurs = "Once"
   @State private var dueDate = Date()
   @State private var dueTime = Date()
+  @State private var days: Set<String> = []
+  @State private var startDate = Date()
+  @State private var endDate = Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
+
+  private let weekdayLabels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      Text("Title").bold()
+      Text("Title*").bold()
       TextField("Task Title", text: $title).textFieldStyle(.roundedBorder)
 
       Text("Details").bold()
-      TextField("Task description", text: $details).textFieldStyle(.roundedBorder)
-
-      Text("Subject").bold()
-      TextField("Select subject", text: $subject).textFieldStyle(.roundedBorder)
+      TextEditor(text: $details)
+        .frame(height: 100)
+        .padding(8)
+        .overlay(
+          RoundedRectangle(cornerRadius: 8)
+            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
 
       Text("Occurs").bold()
       HStack {
@@ -89,112 +97,244 @@ private struct TaskForm: View {
         choicePill("Repeating", selection: $occurs)
       }
 
-      HStack {
-        VStack(alignment: .leading) {
-          Text("Due Date").bold()
-          DatePicker("", selection: $dueDate, displayedComponents: .date).labelsHidden()
+      if occurs == "Repeating" {
+        Text("Repeat Days*").bold()
+        FlowLayout(alignment: .leading, spacing: 10) {
+          ForEach(weekdayLabels, id: \.self) { d in
+            Button(action: { toggleDay(d) }) {
+              Text(d)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 12).fill(days.contains(d) ? Color.spPrimary : Color.clear))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.spPrimary.opacity(0.6), lineWidth: 2))
+                .foregroundColor(days.contains(d) ? .white : Color.spPrimary)
+            }.buttonStyle(.plain)
+          }
         }
+
+        HStack {
+          VStack(alignment: .leading) {
+            Text("Start Date*").bold()
+            DatePicker("", selection: $startDate, displayedComponents: .date).labelsHidden()
+          }
+          VStack(alignment: .leading) {
+            Text("End Date*").bold()
+            DatePicker("", selection: $endDate, displayedComponents: .date).labelsHidden()
+          }
+        }
+      } else {
         VStack(alignment: .leading) {
-          Text("Time").bold()
-          DatePicker("", selection: $dueTime, displayedComponents: .hourAndMinute).labelsHidden()
+          Text("Due Date*").bold()
+          DatePicker("", selection: $dueDate, displayedComponents: .date).labelsHidden()
         }
       }
 
+      VStack(alignment: .leading) {
+        Text("Time*").bold()
+        DatePicker("", selection: $dueTime, displayedComponents: .hourAndMinute).labelsHidden()
+      }
+
       HStack {
-        Button("Cancel") { reset() }
+        Button("Cancel") { dismiss() }
           .buttonStyle(.bordered)
           .tint(Color.spPrimary.opacity(0.3))
         Spacer()
         Button("Save Task") { save() }
           .buttonStyle(.borderedProminent)
           .tint(Color.spPrimary)
+          .disabled(title.isEmpty || (occurs == "Repeating" && days.isEmpty))
       }
       .padding(.top, 8)
     }
   }
 
-  // uses shared choicePill defined at file scope
+  private func toggleDay(_ d: String) { if days.contains(d) { days.remove(d) } else { days.insert(d) } }
 
   private func save() {
-    let item = TaskRecord(title: title, details: details, subject: subject, occurs: occurs, dueDate: dueDate, dueTime: dueTime)
+    let item = TaskRecord(
+      title: title,
+      details: details,
+      occurs: occurs,
+      dueDate: dueDate,
+      dueTime: dueTime,
+      days: occurs == "Repeating" ? Array(days).sorted() : [],
+      startDate: occurs == "Repeating" ? startDate : nil,
+      endDate: occurs == "Repeating" ? endDate : nil
+    )
     context.insert(item)
     try? context.save()
-    reset()
+    dismiss()
   }
-
-  private func reset() { title = ""; details = ""; subject = ""; occurs = "Once"; dueDate = Date(); dueTime = Date() }
 }
 
 // MARK: - Exam Form
 
 private struct ExamForm: View {
   let context: ModelContext
+  let dismiss: DismissAction
   @State private var name = ""
-  @State private var subject = ""
-  @State private var examType = "Exam"
+  @State private var examType = "Midterm 1"
+  @State private var customType = ""
   @State private var mode = "In Person"
-  @State private var seat = ""
   @State private var room = ""
+  @State private var building = ""
+  @State private var link = ""
   @State private var date = Date()
   @State private var time = Date()
   @State private var duration = 60
+  @State private var days: Set<String> = []
+  @State private var startDate = Date()
+  @State private var endDate = Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
+
+  private let examTypes = ["Midterm 1", "Midterm 2", "Final", "Quiz", "Other"]
+  private let weekdayLabels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      Text("Exam").bold()
+      Text("Name*").bold()
       TextField("Exam Name", text: $name).textFieldStyle(.roundedBorder)
 
-      Text("Subject").bold()
-      TextField("Select subject", text: $subject).textFieldStyle(.roundedBorder)
+      Text("Type*").bold()
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 8) {
+          ForEach(examTypes, id: \.self) { type in
+            choicePill(type, selection: $examType)
+          }
+        }
+      }
 
-      Text("Type").bold()
-      HStack { choicePill("Exam", selection: $examType); choicePill("Quiz", selection: $examType); choicePill("Test", selection: $examType) }
+      if examType == "Other" {
+        Text("Custom Type").bold()
+        TextField("Enter exam type", text: $customType).textFieldStyle(.roundedBorder)
+      }
 
       Text("Mode").bold()
       HStack { choicePill("In Person", selection: $mode); choicePill("Online", selection: $mode) }
 
-      HStack {
-        VStack(alignment: .leading) { Text("Seat").bold(); TextField("Seat #", text: $seat).textFieldStyle(.roundedBorder) }
-        VStack(alignment: .leading) { Text("Room").bold(); TextField("Room", text: $room).textFieldStyle(.roundedBorder) }
+      if mode == "Online" {
+        Text("Link").bold()
+        TextField("Meeting link", text: $link).textFieldStyle(.roundedBorder)
+      } else {
+        HStack {
+          VStack(alignment: .leading) { 
+            Text("Room").bold()
+            TextField("Room", text: $room).textFieldStyle(.roundedBorder)
+          }
+          VStack(alignment: .leading) { 
+            Text("Building").bold()
+            TextField("Building", text: $building).textFieldStyle(.roundedBorder)
+          }
+        }
+      }
+
+      if examType == "Quiz" {
+        Text("Quiz Repeat Days (optional)").bold()
+        Text("Leave empty for one-time quiz")
+          .font(.caption)
+          .foregroundColor(.gray)
+        FlowLayout(alignment: .leading, spacing: 10) {
+          ForEach(weekdayLabels, id: \.self) { d in
+            Button(action: { toggleDay(d) }) {
+              Text(d)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 12).fill(days.contains(d) ? Color.spPrimary : Color.clear))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.spPrimary.opacity(0.6), lineWidth: 2))
+                .foregroundColor(days.contains(d) ? .white : Color.spPrimary)
+            }.buttonStyle(.plain)
+          }
+        }
+
+        if !days.isEmpty {
+          HStack {
+            VStack(alignment: .leading) {
+              Text("Start Date*").bold()
+              DatePicker("", selection: $startDate, displayedComponents: .date).labelsHidden()
+            }
+            VStack(alignment: .leading) {
+              Text("End Date*").bold()
+              DatePicker("", selection: $endDate, displayedComponents: .date).labelsHidden()
+            }
+          }
+        } else {
+          VStack(alignment: .leading) {
+            Text("Date*").bold()
+            DatePicker("", selection: $date, displayedComponents: .date).labelsHidden()
+          }
+        }
+      } else {
+        VStack(alignment: .leading) {
+          Text("Date*").bold()
+          DatePicker("", selection: $date, displayedComponents: .date).labelsHidden()
+        }
       }
 
       HStack {
-        VStack(alignment: .leading) { Text("Date").bold(); DatePicker("", selection: $date, displayedComponents: .date).labelsHidden() }
-        VStack(alignment: .leading) { Text("Time").bold(); DatePicker("", selection: $time, displayedComponents: .hourAndMinute).labelsHidden() }
+        VStack(alignment: .leading) {
+          Text("Time*").bold()
+          DatePicker("", selection: $time, displayedComponents: .hourAndMinute).labelsHidden()
+        }
+        VStack(alignment: .leading) {
+          Text("Duration (min)*").bold()
+          TextField("Duration", value: $duration, formatter: NumberFormatter()).textFieldStyle(.roundedBorder)
+        }
       }
 
-      VStack(alignment: .leading) { Text("Duration (In minutes)").bold(); TextField("Duration (In minutes)", value: $duration, formatter: NumberFormatter()).textFieldStyle(.roundedBorder) }
-
-      HStack { Button("Cancel") { reset() }.buttonStyle(.bordered).tint(Color.spPrimary.opacity(0.3)); Spacer(); Button("Save Exam") { save() }.buttonStyle(.borderedProminent).tint(Color.spPrimary) }.padding(.top, 8)
+      HStack {
+        Button("Cancel") { dismiss() }
+          .buttonStyle(.bordered)
+          .tint(Color.spPrimary.opacity(0.3))
+        Spacer()
+        Button("Save Exam") { save() }
+          .buttonStyle(.borderedProminent)
+          .tint(Color.spPrimary)
+          .disabled(name.isEmpty || (examType == "Other" && customType.isEmpty))
+      }
+      .padding(.top, 8)
     }
   }
 
-  // uses shared choicePill defined at file scope
+  private func toggleDay(_ d: String) { if days.contains(d) { days.remove(d) } else { days.insert(d) } }
 
   private func save() {
-    let record = ExamRecord(name: name, subject: subject, examType: examType, mode: mode, seat: seat, room: room, date: date, time: time, durationMinutes: duration)
+    let isRepeating = examType == "Quiz" && !days.isEmpty
+    let record = ExamRecord(
+      name: name,
+      examType: examType,
+      customType: customType,
+      mode: mode,
+      room: room,
+      building: building,
+      link: link,
+      date: date,
+      time: time,
+      durationMinutes: duration,
+      isRepeating: isRepeating,
+      days: isRepeating ? Array(days).sorted() : [],
+      startDate: isRepeating ? startDate : nil,
+      endDate: isRepeating ? endDate : nil
+    )
     context.insert(record)
     try? context.save()
-    reset()
+    dismiss()
   }
-
-  private func reset() { name = ""; subject = ""; examType = "Exam"; mode = "In Person"; seat = ""; room = ""; date = Date(); time = Date(); duration = 60 }
 }
 
 // MARK: - Class Form
 
 private struct ClassForm: View {
   let context: ModelContext
+  let dismiss: DismissAction
   @State private var mode = "In Person"
   @State private var className = ""
   @State private var room = ""
   @State private var building = ""
   @State private var teacher = ""
-  @State private var subject = ""
-  @State private var occurs = "Once"
   @State private var days: Set<String> = []
   @State private var startTime = Date()
   @State private var endTime = Date()
+  @State private var startDate = Date()
+  @State private var endDateValue = Calendar.current.date(byAdding: .month, value: 3, to: Date()) ?? Date()
 
   private let weekdayLabels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 
@@ -203,18 +343,27 @@ private struct ClassForm: View {
       Text("Mode").bold()
       HStack { choicePill("In Person", selection: $mode); choicePill("Online", selection: $mode) }
 
-      Text("Class").bold()
+      Text("Class Name*").bold()
       TextField("Class Name", text: $className).textFieldStyle(.roundedBorder)
 
-      HStack { VStack(alignment: .leading) { Text("Room").bold(); TextField("Room", text: $room).textFieldStyle(.roundedBorder) }; VStack(alignment: .leading) { Text("Building").bold(); TextField("Building", text: $building).textFieldStyle(.roundedBorder) } }
+      HStack { 
+        VStack(alignment: .leading) { 
+          Text("Room").bold()
+          TextField("Room", text: $room).textFieldStyle(.roundedBorder)
+        }
+        VStack(alignment: .leading) { 
+          Text("Building").bold()
+          TextField("Building", text: $building).textFieldStyle(.roundedBorder)
+        }
+      }
 
-      Text("Teacher").bold(); TextField("Teacher Name", text: $teacher).textFieldStyle(.roundedBorder)
+      Text("Teacher").bold()
+      TextField("Teacher Name", text: $teacher).textFieldStyle(.roundedBorder)
 
-      Text("Subject").bold(); TextField("Select subject", text: $subject).textFieldStyle(.roundedBorder)
-
-      Text("Occurs").bold(); HStack { choicePill("Once", selection: $occurs); choicePill("Repeating", selection: $occurs) }
-
-      Text("Days*").bold()
+      Text("Repeat Days*").bold()
+      Text("Select which days of the week this class occurs")
+        .font(.caption)
+        .foregroundColor(.gray)
       FlowLayout(alignment: .leading, spacing: 10) {
         ForEach(weekdayLabels, id: \.self) { d in
           Button(action: { toggleDay(d) }) {
@@ -228,9 +377,39 @@ private struct ClassForm: View {
         }
       }
 
-      HStack { VStack(alignment: .leading) { Text("Start Time*").bold(); DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute).labelsHidden() }; VStack(alignment: .leading) { Text("End Time*").bold(); DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute).labelsHidden() } }
+      HStack { 
+        VStack(alignment: .leading) { 
+          Text("Start Time*").bold()
+          DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute).labelsHidden()
+        }
+        VStack(alignment: .leading) { 
+          Text("End Time*").bold()
+          DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute).labelsHidden()
+        }
+      }
 
-      HStack { Button("Cancel") { reset() }.buttonStyle(.bordered).tint(Color.spPrimary.opacity(0.3)); Spacer(); Button("Save Class") { save() }.buttonStyle(.borderedProminent).tint(Color.spPrimary) }.padding(.top, 8)
+      HStack { 
+        VStack(alignment: .leading) { 
+          Text("Start Date*").bold()
+          DatePicker("", selection: $startDate, displayedComponents: .date).labelsHidden()
+        }
+        VStack(alignment: .leading) { 
+          Text("End Date*").bold()
+          DatePicker("", selection: $endDateValue, displayedComponents: .date).labelsHidden()
+        }
+      }
+
+      HStack { 
+        Button("Cancel") { dismiss() }
+          .buttonStyle(.bordered)
+          .tint(Color.spPrimary.opacity(0.3))
+        Spacer()
+        Button("Save Class") { save() }
+          .buttonStyle(.borderedProminent)
+          .tint(Color.spPrimary)
+          .disabled(className.isEmpty || days.isEmpty)
+      }
+      .padding(.top, 8)
     }
   }
 
@@ -238,9 +417,23 @@ private struct ClassForm: View {
 
   private func toggleDay(_ d: String) { if days.contains(d) { days.remove(d) } else { days.insert(d) } }
 
-  private func save() { let rec = ClassRecord(mode: mode, className: className, room: room, building: building, teacher: teacher, subject: subject, occurs: occurs, days: Array(days).sorted(), startTime: startTime, endTime: endTime); context.insert(rec); try? context.save(); reset() }
-
-  private func reset() { mode = "In Person"; className = ""; room = ""; building = ""; teacher = ""; subject = ""; occurs = "Once"; days = []; startTime = Date(); endTime = Date() }
+  private func save() { 
+    let rec = ClassRecord(
+      mode: mode, 
+      className: className, 
+      room: room, 
+      building: building, 
+      teacher: teacher, 
+      days: Array(days).sorted(), 
+      startTime: startTime, 
+      endTime: endTime,
+      startDate: startDate,
+      endDate: endDateValue
+    )
+    context.insert(rec)
+    try? context.save()
+    dismiss()
+  }
 }
 
 // Simple flow layout for days chips

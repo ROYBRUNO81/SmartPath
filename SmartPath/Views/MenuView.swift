@@ -66,6 +66,23 @@ struct MenuView: View {
                                 )
                             }
                             
+                            NavigationLink(destination: TimerView()) {
+                                StatCardButton(
+                                    emoji: "⏳",
+                                    title: "Focus Timer",
+                                    count: 0,
+                                    subtitle: "Pomodoro",
+                                    gradientColors: [
+                                        Color.spPrimary.opacity(0.15),
+                                        Color.white.opacity(0.7)
+                                    ],
+                                    countColor: Color.spPrimary
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
+
+                        HStack(spacing: 12) {
                             NavigationLink(destination: HolidayCategoryView()) {
                                 StatCardButton(
                                     emoji: "🎉",

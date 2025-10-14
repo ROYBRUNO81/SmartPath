@@ -163,6 +163,7 @@ private struct TaskForm: View {
     )
     context.insert(item)
     try? context.save()
+    NotificationCenter.default.post(name: NSNotification.Name("RefreshCalendar"), object: nil)
     dismiss()
   }
 }
@@ -316,6 +317,7 @@ private struct ExamForm: View {
     )
     context.insert(record)
     try? context.save()
+    NotificationCenter.default.post(name: NSNotification.Name("RefreshCalendar"), object: nil)
     dismiss()
   }
 }
@@ -432,6 +434,7 @@ private struct ClassForm: View {
     )
     context.insert(rec)
     try? context.save()
+    NotificationCenter.default.post(name: NSNotification.Name("RefreshCalendar"), object: nil)
     dismiss()
   }
 }

@@ -35,6 +35,44 @@ struct EventItem: Identifiable, Codable, Equatable {
         self.type = type
         self.repeating = repeating
     }
+    
+    // MARK: - Codable
+    enum CodingKeys: String, CodingKey {
+        case id, title, date, startTime, endTime, type, repeating
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        date = try container.decode(Date.self, forKey: .date)
+        startTime = try container.decode(Date.self, forKey: .startTime)
+        endTime = try container.decode(Date.self, forKey: .endTime)
+        type = try container.decode(EventType.self, forKey: .type)
+        repeating = try container.decode(TaskRepeat.self, forKey: .repeating)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(date, forKey: .date)
+        try container.encode(startTime, forKey: .startTime)
+        try container.encode(endTime, forKey: .endTime)
+        try container.encode(type, forKey: .type)
+        try container.encode(repeating, forKey: .repeating)
+    }
+    
+    // MARK: - Equatable
+    static func == (lhs: EventItem, rhs: EventItem) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.title == rhs.title &&
+               lhs.date == rhs.date &&
+               lhs.startTime == rhs.startTime &&
+               lhs.endTime == rhs.endTime &&
+               lhs.type == rhs.type &&
+               lhs.repeating == rhs.repeating
+    }
 }
 
 extension EventItem {

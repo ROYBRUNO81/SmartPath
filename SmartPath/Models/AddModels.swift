@@ -9,7 +9,7 @@ import SwiftData
 import Foundation
 
 @Model
-class TaskRecord {
+class TaskRecord: Hashable {
   var title: String
   var details: String
   var occurs: String // "Once" or "Repeating"
@@ -36,6 +36,16 @@ class TaskRecord {
   static func randomColor() -> String {
     let colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B195", "#C06C84"]
     return colors.randomElement() ?? "#4ECDC4"
+  }
+  
+  static func == (lhs: TaskRecord, rhs: TaskRecord) -> Bool {
+    return lhs.title == rhs.title && lhs.dueDate == rhs.dueDate && lhs.dueTime == rhs.dueTime
+  }
+  
+  func hash(into hasher: inout Hasher) {
+    hasher.combine(title)
+    hasher.combine(dueDate)
+    hasher.combine(dueTime)
   }
 }
 

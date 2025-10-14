@@ -9,63 +9,82 @@ import SwiftUI
 
 struct TaskListView: View {
     let tasks: [TaskItem]
-
-    private var grouped: [(date: Date, items: [TaskItem])] {
+    
+    private var dateRange: (start: Date, end: Date) {
         let cal = Calendar.current
         let start = cal.startOfDay(for: Date())
         let end = cal.date(byAdding: .day, value: 7, to: start)!
-
-        // Dates for the next 7 days
-        let days: [Date] = (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
-
-        // Only include tasks in the next 7 days window
-        let windowTasks = tasks.filter { item in
+        return (start: start, end: end)
+    }
+    
+    private var nextSevenDays: [Date] {
+        let cal = Calendar.current
+        let start = dateRange.start
+        return (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
+    }
+    
+    private var windowTasks: [TaskItem] {
+        let cal = Calendar.current
+        let range = dateRange
+        return tasks.filter { item in
             let d = cal.startOfDay(for: item.dueDate)
-            return d >= start && d < end
+            return d >= range.start && d < range.end
         }
-
-        let groups = Dictionary(grouping: windowTasks) { item in
+    }
+    
+    private var taskGroups: [Date: [TaskItem]] {
+        let cal = Calendar.current
+        return Dictionary(grouping: windowTasks) { item in
             cal.startOfDay(for: item.dueDate)
         }
-
-        return days.map { day in
-            let items = (groups[day] ?? []).sorted { $0.dueTime < $1.dueTime }
+    }
+    
+    private var grouped: [(date: Date, items: [TaskItem])] {
+        return nextSevenDays.map { day in
+            let items = (taskGroups[day] ?? []).sorted { $0.dueTime < $1.dueTime }
             return (day, items)
         }
     }
-
+    
     var body: some View {
         ZStack {
             GradientBackground().ignoresSafeArea()
-
-            ScrollView {
-                LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
-                    ForEach(grouped, id: \.date) { bucket in
-                        Section(header: header(bucket.date, count: bucket.items.count)) {
-                            if bucket.items.isEmpty {
-                                Text("No tasks")
-                                    .font(.subheadline)
-                                    .foregroundColor(.black.opacity(0.6))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal)
-                                    .padding(.vertical, 8)
-                            } else {
-                                ForEach(bucket.items) { item in
-                                    TaskRow(item: item)
-                                        .padding(.horizontal)
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(.vertical)
-            }
+            taskListContent
         }
         .navigationTitle("Tasks")
         .navigationBarTitleDisplayMode(.large)
         .safeAreaInset(edge: .bottom) {
             Color.clear.frame(height: 80)
         }
+    }
+    
+    private var taskListContent: some View {
+        ScrollView {
+            LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
+                ForEach(grouped, id: \.date) { bucket in
+                    Section(header: header(bucket.date, count: bucket.items.count)) {
+                        if bucket.items.isEmpty {
+                            emptyStateView
+                        } else {
+                            ForEach(bucket.items) { item in
+                                TaskItemRow(item: item)
+                                    .padding(.horizontal)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.vertical)
+        }
+    }
+    
+    private var emptyStateView: some View {
+        Text("No tasks")
+            .font(.subheadline)
+            .foregroundColor(.black.opacity(0.6))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
     }
 
     private func header(_ date: Date, count: Int) -> some View {
@@ -88,7 +107,9 @@ struct TaskListView: View {
     }
 }
 
-private struct TaskRow: View {
+
+// MARK: - TaskItemRow
+struct TaskItemRow: View {
     let item: TaskItem
 
     var body: some View {

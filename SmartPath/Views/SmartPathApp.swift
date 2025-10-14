@@ -21,6 +21,12 @@ struct SmartPathApp: App {
     ExamRecord.self,
     ClassRecord.self
   )
+  
+  init() {
+    // Populate sample data on first launch
+    let context = container.mainContext
+    SampleDataService.populateSampleData(context: context)
+  }
 
   var body: some Scene {
     WindowGroup {

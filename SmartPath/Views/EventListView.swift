@@ -156,6 +156,7 @@ private struct EventRow: View {
     }
 }
 
+
 struct EventListView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationStack {

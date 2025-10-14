@@ -57,6 +57,9 @@ struct PlannerCalendarView: View {
             .onChange(of: vm.showExams) { _, _ in
                 refreshTrigger.toggle()
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshCalendar"))) { _ in
+                refreshTrigger.toggle()
+            }
         }
     }
 

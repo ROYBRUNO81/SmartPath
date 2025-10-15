@@ -84,38 +84,6 @@ struct ProfileView: View {
                         }
                         .padding(.horizontal)
 
-                        // Cards row
-                        HStack(spacing: 12) {
-                            NavigationLink(destination: RealTaskListView(context: context)) {
-                                StatCardButton(
-                                    emoji: "👀",
-                                    title: "Pending Tasks",
-                                    count: pendingTasksCount,
-                                    subtitle: "Next 7 days",
-                                    gradientColors: [
-                                        Color.spPrimary.opacity(0.15),
-                                        Color.white.opacity(0.7)
-                                    ],
-                                    countColor: Color.spPrimary
-                                )
-                            }
-
-                            NavigationLink(destination: RealEventListView(context: context)) {
-                                StatCardButton(
-                                    emoji: "📅",
-                                    title: "Upcoming Events",
-                                    count: upcomingEventsCount,
-                                    subtitle: "Next 7 days",
-                                    gradientColors: [
-                                        Color.spSecondary.opacity(0.15),
-                                        Color.white.opacity(0.7)
-                                    ],
-                                    countColor: Color.spSecondary
-                                )
-                            }
-                        }
-                        .padding(.horizontal)
-                        .id(refreshTrigger)
 
                         Spacer()
                     }

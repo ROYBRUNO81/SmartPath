@@ -148,3 +148,35 @@ class StreakRecord {
   }
 }
 
+@Model
+class OtherEventRecord {
+  var title: String
+  var eventType: String // "Interview", "Code Chat", "Meeting", "Other"
+  var customType: String // For "Other" type
+  var details: String
+  var mode: String // "In Person", "Online"
+  var location: String // Room/building for in-person, link for online
+  var date: Date
+  var time: Date
+  var durationMinutes: Int
+  var colorHex: String
+  
+  init(title: String, eventType: String, customType: String = "", details: String = "", mode: String, location: String = "", date: Date, time: Date, durationMinutes: Int, colorHex: String = "") {
+    self.title = title
+    self.eventType = eventType
+    self.customType = customType
+    self.details = details
+    self.mode = mode
+    self.location = location
+    self.date = date
+    self.time = time
+    self.durationMinutes = durationMinutes
+    self.colorHex = colorHex.isEmpty ? Self.randomColor() : colorHex
+  }
+  
+  static func randomColor() -> String {
+    let colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B195", "#C06C84"]
+    return colors.randomElement() ?? "#4ECDC4"
+  }
+}
+

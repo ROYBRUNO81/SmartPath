@@ -97,12 +97,12 @@ struct MenuView: View {
                                 )
                             }
                             
-                            NavigationLink(destination: HolidayCategoryView()) {
+                            NavigationLink(destination: OtherEventCategoryView(context: context)) {
                                 StatCardButton(
-                                    emoji: "🎉",
-                                    title: "Holidays",
-                                    count: 0,
-                                    subtitle: "All holidays",
+                                    emoji: "🎯",
+                                    title: "Other Events",
+                                    count: getOtherEventCount(),
+                                    subtitle: "Interviews & more",
                                     gradientColors: [
                                         Color.purple.opacity(0.15),
                                         Color.white.opacity(0.7)
@@ -116,11 +116,17 @@ struct MenuView: View {
                     .padding(.vertical)
                 }
             }
-            .navigationTitle("Menu")
-            .navigationBarTitleDisplayMode(.large)
-            .safeAreaInset(edge: .bottom) {
-                Color.clear.frame(height: 80)
-            }
+        .navigationTitle("Menu")
+        .navigationBarTitleDisplayMode(.large)
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 80)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshMenuCounts"))) { _ in
+            refreshTrigger.toggle()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshStreak"))) { _ in
+            refreshTrigger.toggle()
+        }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshCalendar"))) { _ in
                 refreshTrigger.toggle()
             }
@@ -129,17 +135,26 @@ struct MenuView: View {
     
     private func getTaskCount() -> Int {
         guard let tasks = try? context.fetch(FetchDescriptor<TaskRecord>()) else { return 0 }
-        return tasks.count
+        let now = Date()
+        return tasks.filter { task in
+            !task.isCompleted && task.dueDate >= now
+        }.count
     }
     
     private func getClassCount() -> Int {
         guard let classes = try? context.fetch(FetchDescriptor<ClassRecord>()) else { return 0 }
-        return classes.count
+        let now = Date()
+        return classes.filter { classRec in
+            classRec.endDate >= now
+        }.count
     }
     
     private func getExamCount() -> Int {
         guard let exams = try? context.fetch(FetchDescriptor<ExamRecord>()) else { return 0 }
-        return exams.count
+        let now = Date()
+        return exams.filter { exam in
+            exam.date >= now
+        }.count
     }
     
     private func getCurrentStreak() -> Int {
@@ -163,6 +178,10 @@ struct MenuView: View {
         }
         
         return streak
+    }
+    
+    private func getOtherEventCount() -> Int {
+        return (try? context.fetch(FetchDescriptor<OtherEventRecord>()))?.count ?? 0
     }
 }
 
@@ -313,80 +332,110 @@ struct HolidayCategoryView: View {
 // MARK: - Current Task View
 struct CurrentTaskView: View {
     let context: ModelContext
-    @State private var daysShown = 14
+    @State private var daysShown = 7
     
-    private var allTasks: [TaskRecord] {
-        (try? context.fetch(FetchDescriptor<TaskRecord>())) ?? []
-    }
-    
-    private var dateRange: (start: Date, end: Date) {
+    private var grouped: [(date: Date, items: [TaskRecord])] {
+        guard let tasks = try? context.fetch(FetchDescriptor<TaskRecord>()) else { return [] }
         let cal = Calendar.current
-        let now = cal.startOfDay(for: Date())
-        let endDate = cal.date(byAdding: .day, value: daysShown, to: now) ?? now
-        return (start: now, end: endDate)
-    }
-    
-    var tasks: [TaskRecord] {
-        let range = dateRange
-        var filtered: [(date: Date, task: TaskRecord)] = []
+        let start = cal.startOfDay(for: Date())
+        let end = cal.date(byAdding: .day, value: daysShown, to: start)!
+        let now = Date()
         
-        for task in allTasks {
+        var dateMap: [Date: [TaskRecord]] = [:]
+        
+        for task in tasks {
             // Skip completed tasks - they should only appear in past tasks
             if task.isCompleted {
                 continue
             }
             
+            // Skip overdue tasks - they should only appear in past tasks
+            if task.dueDate < now {
+                continue
+            }
+            
             if task.occurs == "Repeating" {
-                if let start = task.startDate, let end = task.endDate, start <= range.end && end >= range.start {
-                    filtered.append((date: range.start, task: task))
+                if let startDate = task.startDate, let endDate = task.endDate {
+                    var current = max(start, cal.startOfDay(for: startDate))
+                    let rangeEnd = min(end, cal.startOfDay(for: endDate))
+                    
+                    while current < rangeEnd {
+                        let weekdayFormatter = DateFormatter()
+                        weekdayFormatter.dateFormat = "EEE"
+                        let dayAbbr = weekdayFormatter.string(from: current).prefix(3)
+                        
+                        if task.days.contains(where: { $0.prefix(3) == dayAbbr }) {
+                            if dateMap[current] == nil { dateMap[current] = [] }
+                            dateMap[current]?.append(task)
+                        }
+                        current = cal.date(byAdding: .day, value: 1, to: current) ?? current
+                    }
                 }
             } else {
-                let taskDate = Calendar.current.startOfDay(for: task.dueDate)
-                if taskDate >= range.start && taskDate <= range.end {
-                    filtered.append((date: taskDate, task: task))
+                let taskDate = cal.startOfDay(for: task.dueDate)
+                if taskDate >= start && taskDate < end {
+                    if dateMap[taskDate] == nil { dateMap[taskDate] = [] }
+                    dateMap[taskDate]?.append(task)
                 }
             }
         }
         
-        return filtered.sorted { $0.date < $1.date }.map { $0.task }
+        return dateMap.map { (date: $0.key, items: $0.value.sorted { $0.dueTime < $1.dueTime }) }
+            .sorted { $0.date < $1.date }
     }
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                if tasks.isEmpty {
-                    Text("No upcoming tasks")
-                        .font(.subheadline)
-                        .foregroundColor(.black.opacity(0.6))
-                        .padding()
-                } else {
-                    ForEach(tasks) { task in
-                        TaskRow(task: task)
-                            .padding(.horizontal)
-                    }
-                }
-                
-                if canShowMore {
-                    Button(action: { showMore() }) {
-                        Text("Show More")
+        ZStack {
+            GradientBackground().ignoresSafeArea()
+            
+            ScrollView {
+                LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
+                    if grouped.isEmpty {
+                        Text("No upcoming tasks")
                             .font(.subheadline)
-                            .foregroundColor(Color.spPrimary)
+                            .foregroundColor(.black.opacity(0.6))
                             .padding()
+                    } else {
+                        ForEach(grouped, id: \.date) { bucket in
+                            Section(header: header(bucket.date, count: bucket.items.count)) {
+                                ForEach(bucket.items, id: \.self) { item in
+                                    TaskRow(task: item)
+                                        .padding(.horizontal)
+                                }
+                            }
+                        }
                     }
                 }
+                .padding(.vertical)
             }
-            .padding(.vertical)
+        }
+        .navigationTitle("Tasks")
+        .navigationBarTitleDisplayMode(.large)
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 80)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshMenuCounts"))) { _ in
+            // Refresh the view when tasks are completed
         }
     }
     
-    var canShowMore: Bool {
-        return daysShown < 98
-    }
-    
-    func showMore() {
-        if daysShown == 14 { daysShown = 28 }
-        else if daysShown == 28 { daysShown = 56 }
-        else if daysShown == 56 { daysShown = 98 }
+    private func header(_ date: Date, count: Int) -> some View {
+        HStack {
+            Text(date, style: .date)
+                .font(.headline)
+                .foregroundColor(.black)
+            Spacer()
+            Text("\(count)")
+                .font(.headline)
+                .foregroundColor(.black)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.6))
+                .clipShape(Capsule())
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(BlurView(style: .systemMaterial))
     }
 }
 
@@ -406,10 +455,10 @@ struct PastTaskView: View {
         return (start: startDate, end: now)
     }
     
-    var tasks: [TaskRecord] {
+    private var grouped: [(date: Date, items: [TaskRecord])] {
         let range = dateRange
         let now = Date()
-        var filtered: [(date: Date, task: TaskRecord)] = []
+        var dateMap: [Date: [TaskRecord]] = [:]
         
         for task in allTasks {
             var shouldInclude = false
@@ -425,51 +474,72 @@ struct PastTaskView: View {
                 if dueDate >= range.start && dueDate < range.end {
                     shouldInclude = true
                     taskDate = dueDate
-                    
-                    // Mark overdue tasks as uncompleted if they haven't been completed
-                    if !task.isCompleted && task.dueDate < now {
-                        task.isCompleted = false
-                        task.completionPercentage = 0
-                        try? context.save()
-                    }
                 }
             }
             
-            // Include completed tasks or overdue tasks
+            // Include completed tasks OR overdue tasks (not completed)
             if shouldInclude && (task.isCompleted || task.dueDate < now) {
-                filtered.append((date: taskDate, task: task))
+                if dateMap[taskDate] == nil { dateMap[taskDate] = [] }
+                dateMap[taskDate]?.append(task)
             }
         }
         
-        return filtered.sorted { $0.date > $1.date }.map { $0.task }
+        return dateMap.map { (date: $0.key, items: $0.value.sorted { $0.dueTime < $1.dueTime }) }
+            .sorted { $0.date > $1.date }
     }
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                if tasks.isEmpty {
-                    Text("No past tasks")
-                        .font(.subheadline)
-                        .foregroundColor(.black.opacity(0.6))
-                        .padding()
-                } else {
-                    ForEach(tasks) { task in
-                        TaskRow(task: task)
-                            .padding(.horizontal)
-                    }
-                }
-                
-                if canShowMore {
-                    Button(action: { showMore() }) {
-                        Text("Show More")
+        ZStack {
+            GradientBackground().ignoresSafeArea()
+            
+            ScrollView {
+                LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
+                    if grouped.isEmpty {
+                        Text("No past tasks")
                             .font(.subheadline)
-                            .foregroundColor(Color.spPrimary)
+                            .foregroundColor(.black.opacity(0.6))
                             .padding()
+                    } else {
+                        ForEach(grouped, id: \.date) { bucket in
+                            Section(header: header(bucket.date, count: bucket.items.count)) {
+                                ForEach(bucket.items, id: \.self) { item in
+                                    TaskRow(task: item, isInPastView: true)
+                                        .padding(.horizontal)
+                                }
+                            }
+                        }
                     }
                 }
+                .padding(.vertical)
             }
-            .padding(.vertical)
         }
+        .navigationTitle("Past Tasks")
+        .navigationBarTitleDisplayMode(.large)
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 80)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshMenuCounts"))) { _ in
+            // Refresh the view when tasks are completed
+        }
+    }
+    
+    private func header(_ date: Date, count: Int) -> some View {
+        HStack {
+            Text(date, style: .date)
+                .font(.headline)
+                .foregroundColor(.black)
+            Spacer()
+            Text("\(count)")
+                .font(.headline)
+                .foregroundColor(.black)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.6))
+                .clipShape(Capsule())
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(BlurView(style: .systemMaterial))
     }
     
     var canShowMore: Bool {
@@ -486,55 +556,92 @@ struct PastTaskView: View {
 // MARK: - Current Class View
 struct CurrentClassView: View {
     let context: ModelContext
-    @State private var daysShown = 14
+    @State private var daysShown = 7
     
-    var classes: [ClassRecord] {
+    private var grouped: [(date: Date, items: [ClassRecord])] {
         guard let allClasses = try? context.fetch(FetchDescriptor<ClassRecord>()) else { return [] }
         let cal = Calendar.current
-        let now = cal.startOfDay(for: Date())
-        let endDate = cal.date(byAdding: .day, value: daysShown, to: now) ?? now
+        let start = cal.startOfDay(for: Date())
+        let end = cal.date(byAdding: .day, value: daysShown, to: start)!
         
-        return allClasses.filter { classRec in
-            classRec.startDate <= endDate && classRec.endDate >= now
+        var dateMap: [Date: [ClassRecord]] = [:]
+        
+        for classRec in allClasses {
+            if classRec.startDate <= end && classRec.endDate >= start {
+                // Generate class occurrences for each day in the range
+                var current = max(start, cal.startOfDay(for: classRec.startDate))
+                let rangeEnd = min(end, cal.startOfDay(for: classRec.endDate))
+                
+                while current < rangeEnd {
+                    let weekdayFormatter = DateFormatter()
+                    weekdayFormatter.dateFormat = "EEE"
+                    let dayAbbr = weekdayFormatter.string(from: current).prefix(3)
+                    
+                    if classRec.days.contains(where: { $0.prefix(3) == dayAbbr }) {
+                        if dateMap[current] == nil { dateMap[current] = [] }
+                        dateMap[current]?.append(classRec)
+                    }
+                    current = cal.date(byAdding: .day, value: 1, to: current) ?? current
+                }
+            }
         }
+        
+        return dateMap.map { (date: $0.key, items: $0.value.sorted { $0.startTime < $1.startTime }) }
+            .sorted { $0.date < $1.date }
     }
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                if classes.isEmpty {
-                    Text("No upcoming classes")
-                        .font(.subheadline)
-                        .foregroundColor(.black.opacity(0.6))
-                        .padding()
-                } else {
-                    ForEach(classes) { classRec in
-                        ClassRow(classRec: classRec)
-                            .padding(.horizontal)
-                    }
-                }
-                
-                if canShowMore {
-                    Button(action: { showMore() }) {
-                        Text("Show More")
+        ZStack {
+            GradientBackground().ignoresSafeArea()
+            
+            ScrollView {
+                LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
+                    if grouped.isEmpty {
+                        Text("No upcoming classes")
                             .font(.subheadline)
-                            .foregroundColor(Color.spPrimary)
+                            .foregroundColor(.black.opacity(0.6))
                             .padding()
+                    } else {
+                        ForEach(grouped, id: \.date) { bucket in
+                            Section(header: header(bucket.date, count: bucket.items.count)) {
+                                ForEach(bucket.items, id: \.self) { item in
+                                    ClassRow(classRec: item)
+                                        .padding(.horizontal)
+                                }
+                            }
+                        }
                     }
                 }
+                .padding(.vertical)
             }
-            .padding(.vertical)
+        }
+        .navigationTitle("Classes")
+        .navigationBarTitleDisplayMode(.large)
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 80)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshMenuCounts"))) { _ in
+            // Refresh the view when data changes
         }
     }
     
-    var canShowMore: Bool {
-        return daysShown < 98
-    }
-    
-    func showMore() {
-        if daysShown == 14 { daysShown = 28 }
-        else if daysShown == 28 { daysShown = 56 }
-        else if daysShown == 56 { daysShown = 98 }
+    private func header(_ date: Date, count: Int) -> some View {
+        HStack {
+            Text(date, style: .date)
+                .font(.headline)
+                .foregroundColor(.black)
+            Spacer()
+            Text("\(count)")
+                .font(.headline)
+                .foregroundColor(.black)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.6))
+                .clipShape(Capsule())
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(BlurView(style: .systemMaterial))
     }
 }
 
@@ -596,75 +703,96 @@ struct PastClassView: View {
 // MARK: - Current Exam View
 struct CurrentExamView: View {
     let context: ModelContext
-    @State private var daysShown = 14
+    @State private var daysShown = 7
     
-    private var allExams: [ExamRecord] {
-        (try? context.fetch(FetchDescriptor<ExamRecord>())) ?? []
-    }
-    
-    private var dateRange: (start: Date, end: Date) {
+    private var grouped: [(date: Date, items: [ExamRecord])] {
+        guard let allExams = try? context.fetch(FetchDescriptor<ExamRecord>()) else { return [] }
         let cal = Calendar.current
-        let now = cal.startOfDay(for: Date())
-        let endDate = cal.date(byAdding: .day, value: daysShown, to: now) ?? now
-        return (start: now, end: endDate)
-    }
-    
-    var exams: [ExamRecord] {
-        let range = dateRange
-        var filtered: [(date: Date, exam: ExamRecord)] = []
+        let start = cal.startOfDay(for: Date())
+        let end = cal.date(byAdding: .day, value: daysShown, to: start)!
+        
+        var dateMap: [Date: [ExamRecord]] = [:]
         
         for exam in allExams {
             if exam.isRepeating {
-                if let start = exam.startDate, let end = exam.endDate, start <= range.end && end >= range.start {
-                    filtered.append((date: range.start, exam: exam))
+                if let startDate = exam.startDate, let endDate = exam.endDate {
+                    var current = max(start, cal.startOfDay(for: startDate))
+                    let rangeEnd = min(end, cal.startOfDay(for: endDate))
+                    
+                    while current < rangeEnd {
+                        let weekdayFormatter = DateFormatter()
+                        weekdayFormatter.dateFormat = "EEE"
+                        let dayAbbr = weekdayFormatter.string(from: current).prefix(3)
+                        
+                        if exam.days.contains(where: { $0.prefix(3) == dayAbbr }) {
+                            if dateMap[current] == nil { dateMap[current] = [] }
+                            dateMap[current]?.append(exam)
+                        }
+                        current = cal.date(byAdding: .day, value: 1, to: current) ?? current
+                    }
                 }
             } else {
-                let examDate = Calendar.current.startOfDay(for: exam.date)
-                if examDate >= range.start && examDate <= range.end {
-                    filtered.append((date: examDate, exam: exam))
+                let examDate = cal.startOfDay(for: exam.date)
+                if examDate >= start && examDate < end {
+                    if dateMap[examDate] == nil { dateMap[examDate] = [] }
+                    dateMap[examDate]?.append(exam)
                 }
             }
         }
         
-        return filtered.sorted { $0.date < $1.date }.map { $0.exam }
+        return dateMap.map { (date: $0.key, items: $0.value.sorted { $0.time < $1.time }) }
+            .sorted { $0.date < $1.date }
     }
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                if exams.isEmpty {
-                    Text("No upcoming exams")
-                        .font(.subheadline)
-                        .foregroundColor(.black.opacity(0.6))
-                        .padding()
-                } else {
-                    ForEach(exams) { exam in
-                        ExamRow(exam: exam)
-                            .padding(.horizontal)
-                    }
-                }
-                
-                if canShowMore {
-                    Button(action: { showMore() }) {
-                        Text("Show More")
+        ZStack {
+            GradientBackground().ignoresSafeArea()
+            
+            ScrollView {
+                LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
+                    if grouped.isEmpty {
+                        Text("No upcoming exams")
                             .font(.subheadline)
-                            .foregroundColor(Color.spPrimary)
+                            .foregroundColor(.black.opacity(0.6))
                             .padding()
+                    } else {
+                        ForEach(grouped, id: \.date) { bucket in
+                            Section(header: header(bucket.date, count: bucket.items.count)) {
+                                ForEach(bucket.items, id: \.self) { item in
+                                    ExamRow(exam: item)
+                                        .padding(.horizontal)
+                                }
+                            }
+                        }
                     }
                 }
+                .padding(.vertical)
             }
-            .padding(.vertical)
+        }
+        .navigationTitle("Exams")
+        .navigationBarTitleDisplayMode(.large)
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 80)
         }
     }
     
-    var canShowMore: Bool {
-        return daysShown < 98
-    }
-    
-    func showMore() {
-        if daysShown == 14 { daysShown = 28 }
-        else if daysShown == 28 { daysShown = 56 }
-        else if daysShown == 56 { daysShown = 98 }
+    private func header(_ date: Date, count: Int) -> some View {
+        HStack {
+            Text(date, style: .date)
+                .font(.headline)
+                .foregroundColor(.black)
+            Spacer()
+            Text("\(count)")
+                .font(.headline)
+                .foregroundColor(.black)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.6))
+                .clipShape(Capsule())
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(BlurView(style: .systemMaterial))
     }
 }
 
@@ -775,20 +903,26 @@ struct PastHolidayView: View {
 // MARK: - Row Views
 struct TaskRow: View {
     let task: TaskRecord
+    let isInPastView: Bool
+    
+    init(task: TaskRecord, isInPastView: Bool = false) {
+        self.task = task
+        self.isInPastView = isInPastView
+    }
     
     var body: some View {
-        if task.isCompleted {
-            // Completed task - no navigation, show completion status
+        if isInPastView {
+            // Past task - show status but no interaction
             HStack {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
+                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .foregroundColor(task.isCompleted ? .green : .red)
                     .font(.system(size: 16))
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(task.title)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.black.opacity(0.7))
-                        .strikethrough()
+                        .strikethrough(task.isCompleted)
                     
                     Text(task.details)
                         .font(.system(size: 12))
@@ -799,9 +933,9 @@ struct TaskRow: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("Completed")
+                    Text(task.isCompleted ? "Completed" : "Not Completed")
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.green)
+                        .foregroundColor(task.isCompleted ? .green : .red)
                     Text(timeString(task.dueTime))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.black.opacity(0.5))
@@ -810,15 +944,23 @@ struct TaskRow: View {
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
             .background(
-                LinearGradient(colors: [Color.green.opacity(0.1), Color.green.opacity(0.05)], startPoint: .top, endPoint: .bottom)
+                LinearGradient(
+                    colors: task.isCompleted ? 
+                        [Color.green.opacity(0.1), Color.green.opacity(0.05)] :
+                        [Color.red.opacity(0.1), Color.red.opacity(0.05)], 
+                    startPoint: .top, endPoint: .bottom
+                )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 14).stroke(Color.green.opacity(0.3), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 14).stroke(
+                    task.isCompleted ? Color.green.opacity(0.3) : Color.red.opacity(0.3), 
+                    lineWidth: 1
+                )
             )
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
         } else {
-            // Active task - navigable
+            // Current task - navigable
             NavigationLink(destination: TaskDetailView(task: task)) {
                 HStack {
                     Circle()
@@ -838,16 +980,9 @@ struct TaskRow: View {
                     
                     Spacer()
                     
-                    VStack(alignment: .trailing, spacing: 2) {
-                        if task.dueDate < Date() {
-                            Text("Overdue")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(.red)
-                        }
-                        Text(timeString(task.dueTime))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.black.opacity(0.7))
-                    }
+                    Text(timeString(task.dueTime))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.black.opacity(0.7))
                 }
                 .padding(.vertical, 8)
                 .padding(.horizontal, 12)

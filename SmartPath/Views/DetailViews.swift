@@ -146,10 +146,16 @@ struct TaskDetailView: View {
                                                 task.isCompleted = true
                                                 // Add to streak when completed
                                                 addToStreak(activityType: "task", title: task.title, details: task.details)
+                                                try? context.save()
+                                                // Notify menu to refresh counts and streak
+                                                NotificationCenter.default.post(name: NSNotification.Name("RefreshMenuCounts"), object: nil)
+                                                NotificationCenter.default.post(name: NSNotification.Name("RefreshStreak"), object: nil)
+                                                // Dismiss the view after completion
+                                                dismiss()
                                             } else if task.completionPercentage < 100 {
                                                 task.isCompleted = false
+                                                try? context.save()
                                             }
-                                            try? context.save()
                                         }
                                     ), in: 0...100, step: 5)
                                     .accentColor(Color.spPrimary)
@@ -214,10 +220,15 @@ struct TaskDetailView: View {
         if !task.isCompleted {
             task.isCompleted = true
             task.completionPercentage = 100
-            // Add to streak only if not already completed
+            // Add to streak immediately when completed
             addToStreak(activityType: "task", title: task.title, details: task.details)
+            try? context.save()
+            // Notify menu to refresh counts and streak
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshMenuCounts"), object: nil)
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshStreak"), object: nil)
+            // Dismiss the view after completion
+            dismiss()
         }
-        try? context.save()
     }
     
     private func addToStreak(activityType: String, title: String, details: String) {

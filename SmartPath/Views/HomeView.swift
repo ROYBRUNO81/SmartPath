@@ -50,6 +50,9 @@ struct HomeView: View {
         .safeAreaInset(edge: .bottom) {
             Color.clear.frame(height: 80)
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshMenuCounts"))) { _ in
+            refreshTrigger.toggle()
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshCalendar"))) { _ in
             refreshTrigger.toggle()
         }

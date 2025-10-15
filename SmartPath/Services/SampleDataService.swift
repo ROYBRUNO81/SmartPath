@@ -27,7 +27,13 @@ class SampleDataService {
     }
     
     static func populateSampleData(context: ModelContext) {
-        // Clear existing data first (for testing)
+        // Check if data already exists with proper names
+        if let classes = try? context.fetch(FetchDescriptor<ClassRecord>()), 
+           !classes.isEmpty && !classes.first!.className.contains("NSManagedObject") {
+            return // Data already exists with proper names
+        }
+        
+        // Clear existing data if it has NSManagedObject names
         clearExistingData(context: context)
         
         // Create a default Major and Schedule

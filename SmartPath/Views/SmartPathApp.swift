@@ -20,18 +20,17 @@ struct SmartPathApp: App {
     TaskRecord.self,
     ExamRecord.self,
     ClassRecord.self,
-    StreakRecord.self
+    StreakRecord.self,
+    OtherEventRecord.self
   )
   
   init() {
-    // Populate sample data on first launch
-    let context = container.mainContext
-    SampleDataService.populateSampleData(context: context)
+    // No sample data - user will add their own data
   }
 
   var body: some Scene {
     WindowGroup {
-      ContentView()
+      AppRootView()
         .modelContainer(container)
     }
   }

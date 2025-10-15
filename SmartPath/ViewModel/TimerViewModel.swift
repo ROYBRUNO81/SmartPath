@@ -81,6 +81,9 @@ class TimerViewModel: ObservableObject {
         switch phase {
         case .focus:
             completedFocusCount += 1
+            // Add pomodoro completion to streak
+            addPomodoroToStreak()
+            
             if completedFocusCount % max(1, longBreakInterval) == 0 {
                 transition(to: .longBreak)
             } else {
@@ -89,6 +92,11 @@ class TimerViewModel: ObservableObject {
         case .shortBreak, .longBreak:
             transition(to: .focus)
         }
+    }
+    
+    private func addPomodoroToStreak() {
+        // This will be called from the view with context
+        NotificationCenter.default.post(name: NSNotification.Name("PomodoroCompleted"), object: nil)
     }
 
     func transition(to newPhase: Phase) {

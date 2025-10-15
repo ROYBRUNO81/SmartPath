@@ -20,6 +20,9 @@ class TaskRecord: Hashable {
   var days: [String] // Days of week for repeating
   var startDate: Date? // Start date for repeating
   var endDate: Date? // End date for repeating
+  // Completion tracking
+  var isCompleted: Bool = false
+  var completionPercentage: Int = 0 // 0-100
 
   init(title: String, details: String, occurs: String, dueDate: Date, dueTime: Date, days: [String] = [], startDate: Date? = nil, endDate: Date? = nil, colorHex: String = "") {
     self.title = title
@@ -67,6 +70,8 @@ class ExamRecord {
   var days: [String] // Days of week for repeating quizzes
   var startDate: Date? // Start date for repeating
   var endDate: Date? // End date for repeating
+  // Completion tracking
+  var isCompleted: Bool = false
 
   init(name: String, examType: String, customType: String = "", mode: String, room: String, building: String, link: String = "", date: Date, time: Date, durationMinutes: Int, isRepeating: Bool = false, days: [String] = [], startDate: Date? = nil, endDate: Date? = nil, colorHex: String = "") {
     self.name = name
@@ -123,6 +128,23 @@ class ClassRecord {
   static func randomColor() -> String {
     let colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B195", "#C06C84"]
     return colors.randomElement() ?? "#4ECDC4"
+  }
+}
+
+@Model
+class StreakRecord {
+  var date: Date // The date this streak activity occurred
+  var activityType: String // "task", "exam", "pomodoro"
+  var activityTitle: String // Title of the task/exam or "Pomodoro Session"
+  var activityDetails: String // Additional details
+  var completedAt: Date // When it was completed
+  
+  init(date: Date, activityType: String, activityTitle: String, activityDetails: String = "", completedAt: Date = Date()) {
+    self.date = date
+    self.activityType = activityType
+    self.activityTitle = activityTitle
+    self.activityDetails = activityDetails
+    self.completedAt = completedAt
   }
 }
 

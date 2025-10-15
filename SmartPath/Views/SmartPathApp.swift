@@ -19,7 +19,8 @@ struct SmartPathApp: App {
     Schedule.self,
     TaskRecord.self,
     ExamRecord.self,
-    ClassRecord.self
+    ClassRecord.self,
+    StreakRecord.self
   )
   
   init() {

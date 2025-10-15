@@ -25,6 +25,7 @@ struct DisplayEvent: Identifiable {
     let startTime: Date
     let endTime: Date
     let colorHex: String
+    let originalRecord: Any // Can be TaskRecord, ClassRecord, or ExamRecord
 }
 
 @MainActor
@@ -93,7 +94,8 @@ class CalendarViewModel: ObservableObject {
                                 type: "Task",
                                 startTime: task.dueTime,
                                 endTime: calendar.date(byAdding: .minute, value: 30, to: task.dueTime) ?? task.dueTime,
-                                colorHex: task.colorHex
+                                colorHex: task.colorHex,
+                                originalRecord: task
                             ))
                         }
                     }
@@ -107,7 +109,8 @@ class CalendarViewModel: ObservableObject {
                             type: "Task",
                             startTime: task.dueTime,
                             endTime: calendar.date(byAdding: .minute, value: 30, to: task.dueTime) ?? task.dueTime,
-                            colorHex: task.colorHex
+                            colorHex: task.colorHex,
+                            originalRecord: task
                         ))
                     }
                 }
@@ -137,7 +140,8 @@ class CalendarViewModel: ObservableObject {
                                 type: "Exam",
                                 startTime: exam.time,
                                 endTime: calendar.date(byAdding: .minute, value: exam.durationMinutes, to: exam.time) ?? exam.time,
-                                colorHex: exam.colorHex
+                                colorHex: exam.colorHex,
+                                originalRecord: exam
                             ))
                         }
                     }
@@ -152,7 +156,8 @@ class CalendarViewModel: ObservableObject {
                             type: "Exam",
                             startTime: exam.time,
                             endTime: calendar.date(byAdding: .minute, value: exam.durationMinutes, to: exam.time) ?? exam.time,
-                            colorHex: exam.colorHex
+                            colorHex: exam.colorHex,
+                            originalRecord: exam
                         ))
                     }
                 }
@@ -180,7 +185,8 @@ class CalendarViewModel: ObservableObject {
                         type: "Class",
                         startTime: classRec.startTime,
                         endTime: classRec.endTime,
-                        colorHex: classRec.colorHex
+                        colorHex: classRec.colorHex,
+                        originalRecord: classRec
                     ))
                 }
             }

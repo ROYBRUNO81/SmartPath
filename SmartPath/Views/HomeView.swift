@@ -151,15 +151,25 @@ struct HomeView: View {
         guard let classes = try? context.fetch(FetchDescriptor<ClassRecord>()) else { return 0 }
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
+        let now = Date()
         
         return classes.filter { classRec in
-            classRec.startDate <= today && classRec.endDate >= today &&
-            classRec.days.contains(where: { day in
+            if classRec.startDate <= today && classRec.endDate >= today {
                 let weekdayFormatter = DateFormatter()
                 weekdayFormatter.dateFormat = "EEE"
                 let todayAbbr = weekdayFormatter.string(from: today).prefix(3)
-                return day.prefix(3) == todayAbbr
-            })
+                
+                if classRec.days.contains(where: { day in
+                    return day.prefix(3) == todayAbbr
+                }) {
+                    // Check if class has already ended
+                    let classEndTime = cal.date(bySettingHour: cal.component(.hour, from: classRec.endTime),
+                                              minute: cal.component(.minute, from: classRec.endTime),
+                                              second: 0, of: today) ?? classRec.endTime
+                    return now < classEndTime
+                }
+            }
+            return false
         }.count
     }
     
@@ -167,8 +177,11 @@ struct HomeView: View {
         guard let exams = try? context.fetch(FetchDescriptor<ExamRecord>()) else { return 0 }
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
+        let now = Date()
         
         return exams.filter { exam in
+            var isToday = false
+            
             if exam.isRepeating {
                 if let start = exam.startDate, let end = exam.endDate {
                     let examStartDate = cal.startOfDay(for: start)
@@ -180,13 +193,23 @@ struct HomeView: View {
                         let todayAbbr = weekdayFormatter.string(from: today).prefix(3)
                         return day.prefix(3) == todayAbbr
                     })
-                    return isInDateRange && isScheduledDay
+                    isToday = isInDateRange && isScheduledDay
                 }
-                return false
             } else {
                 let examDate = cal.startOfDay(for: exam.date)
-                return examDate == today
+                isToday = examDate == today
             }
+            
+            if isToday {
+                // Check if exam has already ended
+                let examEndTime = cal.date(byAdding: .minute, value: exam.durationMinutes, to: exam.time) ?? exam.time
+                let examEndTimeToday = cal.date(bySettingHour: cal.component(.hour, from: examEndTime),
+                                               minute: cal.component(.minute, from: examEndTime),
+                                               second: 0, of: today) ?? examEndTime
+                return now < examEndTimeToday
+            }
+            
+            return false
         }.count
     }
     
@@ -194,8 +217,11 @@ struct HomeView: View {
         guard let tasks = try? context.fetch(FetchDescriptor<TaskRecord>()) else { return 0 }
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
+        let now = Date()
         
         return tasks.filter { task in
+            var isToday = false
+            
             if task.occurs == "Repeating" {
                 if let start = task.startDate, let end = task.endDate {
                     let taskStartDate = cal.startOfDay(for: start)
@@ -207,13 +233,22 @@ struct HomeView: View {
                         let todayAbbr = weekdayFormatter.string(from: today).prefix(3)
                         return day.prefix(3) == todayAbbr
                     })
-                    return isInDateRange && isScheduledDay
+                    isToday = isInDateRange && isScheduledDay
                 }
-                return false
             } else {
                 let taskDate = cal.startOfDay(for: task.dueDate)
-                return taskDate == today
+                isToday = taskDate == today
             }
+            
+            if isToday {
+                // Check if task due time has already passed
+                let taskDueTimeToday = cal.date(bySettingHour: cal.component(.hour, from: task.dueTime),
+                                               minute: cal.component(.minute, from: task.dueTime),
+                                               second: 0, of: today) ?? task.dueTime
+                return now < taskDueTimeToday
+            }
+            
+            return false
         }.count
     }
     
@@ -221,6 +256,7 @@ struct HomeView: View {
         var events: [TodayEvent] = []
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
+        let now = Date()
         
         // Get classes for today
         if let classes = try? context.fetch(FetchDescriptor<ClassRecord>()) {
@@ -231,17 +267,24 @@ struct HomeView: View {
                     let todayAbbr = weekdayFormatter.string(from: today).prefix(3)
                     
                     if classRec.days.contains(where: { $0.prefix(3) == todayAbbr }) {
-                        events.append(TodayEvent(
-                            id: "class-\(classRec.className)",
-                            title: classRec.className.uppercased(),
-                            subtitle: classRec.teacher,
-                            time: "\(timeString(classRec.startTime)) - \(timeString(classRec.endTime))",
-                            type: .classSession,
-                            color: Color(hex: classRec.colorHex),
-                            backgroundImage: backgroundImageForSubject(classRec.className),
-                            isUpNext: events.isEmpty,
-                            taskCount: 0 // TODO: Calculate tasks for this class
-                        ))
+                        // Check if class has already ended
+                        let classEndTime = cal.date(bySettingHour: cal.component(.hour, from: classRec.endTime),
+                                                  minute: cal.component(.minute, from: classRec.endTime),
+                                                  second: 0, of: today) ?? classRec.endTime
+                        
+                        if now < classEndTime {
+                            events.append(TodayEvent(
+                                id: "class-\(classRec.className)",
+                                title: classRec.className.uppercased(),
+                                subtitle: classRec.teacher,
+                                time: "\(timeString(classRec.startTime)) - \(timeString(classRec.endTime))",
+                                type: .classSession,
+                                color: Color(hex: classRec.colorHex),
+                                backgroundImage: backgroundImageForSubject(classRec.className),
+                                isUpNext: events.isEmpty,
+                                taskCount: 0 // TODO: Calculate tasks for this class
+                            ))
+                        }
                     }
                 }
             }
@@ -271,17 +314,25 @@ struct HomeView: View {
                 }
                 
                 if isToday {
-                    events.append(TodayEvent(
-                        id: "exam-\(exam.name)",
-                        title: exam.name.uppercased(),
-                        subtitle: exam.examType == "Other" ? exam.customType : exam.examType,
-                        time: "\(timeString(exam.time)) - \(timeString(cal.date(byAdding: .minute, value: exam.durationMinutes, to: exam.time) ?? exam.time))",
-                        type: .exam,
-                        color: Color(hex: exam.colorHex),
-                        backgroundImage: backgroundImageForSubject(exam.name),
-                        isUpNext: events.isEmpty,
-                        taskCount: 0
-                    ))
+                    // Check if exam has already ended
+                    let examEndTime = cal.date(byAdding: .minute, value: exam.durationMinutes, to: exam.time) ?? exam.time
+                    let examEndTimeToday = cal.date(bySettingHour: cal.component(.hour, from: examEndTime),
+                                                   minute: cal.component(.minute, from: examEndTime),
+                                                   second: 0, of: today) ?? examEndTime
+                    
+                    if now < examEndTimeToday {
+                        events.append(TodayEvent(
+                            id: "exam-\(exam.name)",
+                            title: exam.name.uppercased(),
+                            subtitle: exam.examType == "Other" ? exam.customType : exam.examType,
+                            time: "\(timeString(exam.time)) - \(timeString(examEndTime))",
+                            type: .exam,
+                            color: Color(hex: exam.colorHex),
+                            backgroundImage: backgroundImageForSubject(exam.name),
+                            isUpNext: events.isEmpty,
+                            taskCount: 0
+                        ))
+                    }
                 }
             }
         }
@@ -310,17 +361,24 @@ struct HomeView: View {
                 }
                 
                 if isToday {
-                    events.append(TodayEvent(
-                        id: "task-\(task.title)",
-                        title: task.title.uppercased(),
-                        subtitle: task.details,
-                        time: timeString(task.dueTime),
-                        type: .exam, // Using exam type for tasks since we don't have a task type in EventType
-                        color: Color(hex: task.colorHex),
-                        backgroundImage: "📝",
-                        isUpNext: events.isEmpty,
-                        taskCount: 0
-                    ))
+                    // Check if task due time has already passed
+                    let taskDueTimeToday = cal.date(bySettingHour: cal.component(.hour, from: task.dueTime),
+                                                   minute: cal.component(.minute, from: task.dueTime),
+                                                   second: 0, of: today) ?? task.dueTime
+                    
+                    if now < taskDueTimeToday {
+                        events.append(TodayEvent(
+                            id: "task-\(task.title)",
+                            title: task.title.uppercased(),
+                            subtitle: task.details,
+                            time: timeString(task.dueTime),
+                            type: .exam, // Using exam type for tasks since we don't have a task type in EventType
+                            color: Color(hex: task.colorHex),
+                            backgroundImage: "📝",
+                            isUpNext: events.isEmpty,
+                            taskCount: 0
+                        ))
+                    }
                 }
             }
         }

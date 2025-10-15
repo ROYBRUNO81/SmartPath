@@ -83,6 +83,20 @@ struct MenuView: View {
                         .padding(.horizontal)
 
                         HStack(spacing: 12) {
+                            NavigationLink(destination: StreakView()) {
+                                StatCardButton(
+                                    emoji: "🔥",
+                                    title: "Study Streak",
+                                    count: getCurrentStreak(),
+                                    subtitle: "Keep it up!",
+                                    gradientColors: [
+                                        Color.orange.opacity(0.15),
+                                        Color.white.opacity(0.7)
+                                    ],
+                                    countColor: Color.orange
+                                )
+                            }
+                            
                             NavigationLink(destination: HolidayCategoryView()) {
                                 StatCardButton(
                                     emoji: "🎉",
@@ -126,6 +140,29 @@ struct MenuView: View {
     private func getExamCount() -> Int {
         guard let exams = try? context.fetch(FetchDescriptor<ExamRecord>()) else { return 0 }
         return exams.count
+    }
+    
+    private func getCurrentStreak() -> Int {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        var streak = 0
+        var currentDate = today
+        
+        // Get all unique dates with activities
+        let allActivities = (try? context.fetch(FetchDescriptor<StreakRecord>())) ?? []
+        let uniqueDates = Set(allActivities.map { cal.startOfDay(for: $0.date) }).sorted(by: >)
+        
+        // Count consecutive days from today backwards
+        for date in uniqueDates {
+            if cal.isDate(date, inSameDayAs: currentDate) {
+                streak += 1
+                currentDate = cal.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
+            } else {
+                break
+            }
+        }
+        
+        return streak
     }
 }
 
@@ -294,6 +331,11 @@ struct CurrentTaskView: View {
         var filtered: [(date: Date, task: TaskRecord)] = []
         
         for task in allTasks {
+            // Skip completed tasks - they should only appear in past tasks
+            if task.isCompleted {
+                continue
+            }
+            
             if task.occurs == "Repeating" {
                 if let start = task.startDate, let end = task.endDate, start <= range.end && end >= range.start {
                     filtered.append((date: range.start, task: task))
@@ -366,18 +408,36 @@ struct PastTaskView: View {
     
     var tasks: [TaskRecord] {
         let range = dateRange
+        let now = Date()
         var filtered: [(date: Date, task: TaskRecord)] = []
         
         for task in allTasks {
+            var shouldInclude = false
+            var taskDate = range.end // Default date for sorting
+            
             if task.occurs == "Repeating" {
                 if let start = task.startDate, let end = task.endDate, start <= range.end && end >= range.start {
-                    filtered.append((date: range.end, task: task))
+                    shouldInclude = true
+                    taskDate = range.end
                 }
             } else {
-                let taskDate = Calendar.current.startOfDay(for: task.dueDate)
-                if taskDate >= range.start && taskDate < range.end {
-                    filtered.append((date: taskDate, task: task))
+                let dueDate = Calendar.current.startOfDay(for: task.dueDate)
+                if dueDate >= range.start && dueDate < range.end {
+                    shouldInclude = true
+                    taskDate = dueDate
+                    
+                    // Mark overdue tasks as uncompleted if they haven't been completed
+                    if !task.isCompleted && task.dueDate < now {
+                        task.isCompleted = false
+                        task.completionPercentage = 0
+                        try? context.save()
+                    }
                 }
+            }
+            
+            // Include completed tasks or overdue tasks
+            if shouldInclude && (task.isCompleted || task.dueDate < now) {
+                filtered.append((date: taskDate, task: task))
             }
         }
         
@@ -717,38 +777,91 @@ struct TaskRow: View {
     let task: TaskRecord
     
     var body: some View {
-        HStack {
-            Circle()
-                .fill(Color(hex: task.colorHex))
-                .frame(width: 8, height: 8)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(task.title)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.black)
+        if task.isCompleted {
+            // Completed task - no navigation, show completion status
+            HStack {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.system(size: 16))
                 
-                Text(task.details)
-                    .font(.system(size: 12))
-                    .foregroundColor(.black.opacity(0.6))
-                    .lineLimit(2)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(task.title)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.black.opacity(0.7))
+                        .strikethrough()
+                    
+                    Text(task.details)
+                        .font(.system(size: 12))
+                        .foregroundColor(.black.opacity(0.5))
+                        .lineLimit(2)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Completed")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.green)
+                    Text(timeString(task.dueTime))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.black.opacity(0.5))
+                }
             }
-            
-            Spacer()
-            
-            Text(timeString(task.dueTime))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.black.opacity(0.7))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(
+                LinearGradient(colors: [Color.green.opacity(0.1), Color.green.opacity(0.05)], startPoint: .top, endPoint: .bottom)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14).stroke(Color.green.opacity(0.3), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+        } else {
+            // Active task - navigable
+            NavigationLink(destination: TaskDetailView(task: task)) {
+                HStack {
+                    Circle()
+                        .fill(Color(hex: task.colorHex))
+                        .frame(width: 8, height: 8)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(task.title)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.black)
+                        
+                        Text(task.details)
+                            .font(.system(size: 12))
+                            .foregroundColor(.black.opacity(0.6))
+                            .lineLimit(2)
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 2) {
+                        if task.dueDate < Date() {
+                            Text("Overdue")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.red)
+                        }
+                        Text(timeString(task.dueTime))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.black.opacity(0.7))
+                    }
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(
+                    LinearGradient(colors: [Color.white.opacity(0.9), Color.white.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.06), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(
-            LinearGradient(colors: [Color.white.opacity(0.9), Color.white.opacity(0.6)], startPoint: .top, endPoint: .bottom)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.06), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
     
     private func timeString(_ date: Date) -> String {
@@ -762,37 +875,40 @@ struct ClassRow: View {
     let classRec: ClassRecord
     
     var body: some View {
-        HStack {
-            Circle()
-                .fill(Color(hex: classRec.colorHex))
-                .frame(width: 8, height: 8)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(classRec.className)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.black)
+        NavigationLink(destination: ClassDetailView(classRecord: classRec)) {
+            HStack {
+                Circle()
+                    .fill(Color(hex: classRec.colorHex))
+                    .frame(width: 8, height: 8)
                 
-                Text(classRec.teacher)
-                    .font(.system(size: 12))
-                    .foregroundColor(.black.opacity(0.6))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(classRec.className)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.black)
+                    
+                    Text(classRec.teacher)
+                        .font(.system(size: 12))
+                        .foregroundColor(.black.opacity(0.6))
+                }
+                
+                Spacer()
+                
+                Text(timeString(classRec.startTime))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.black.opacity(0.7))
             }
-            
-            Spacer()
-            
-            Text(timeString(classRec.startTime))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.black.opacity(0.7))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(
+                LinearGradient(colors: [Color.white.opacity(0.9), Color.white.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.06), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(
-            LinearGradient(colors: [Color.white.opacity(0.9), Color.white.opacity(0.6)], startPoint: .top, endPoint: .bottom)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.06), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+        .buttonStyle(.plain)
     }
     
     private func timeString(_ date: Date) -> String {
@@ -806,37 +922,40 @@ struct ExamRow: View {
     let exam: ExamRecord
     
     var body: some View {
-        HStack {
-            Circle()
-                .fill(Color(hex: exam.colorHex))
-                .frame(width: 8, height: 8)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(exam.name)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.black)
+        NavigationLink(destination: ExamDetailView(exam: exam)) {
+            HStack {
+                Circle()
+                    .fill(Color(hex: exam.colorHex))
+                    .frame(width: 8, height: 8)
                 
-                Text(exam.examType == "Other" ? exam.customType : exam.examType)
-                    .font(.system(size: 12))
-                    .foregroundColor(.black.opacity(0.6))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(exam.name)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.black)
+                    
+                    Text(exam.examType == "Other" ? exam.customType : exam.examType)
+                        .font(.system(size: 12))
+                        .foregroundColor(.black.opacity(0.6))
+                }
+                
+                Spacer()
+                
+                Text(timeString(exam.time))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.black.opacity(0.7))
             }
-            
-            Spacer()
-            
-            Text(timeString(exam.time))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.black.opacity(0.7))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(
+                LinearGradient(colors: [Color.white.opacity(0.9), Color.white.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.06), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(
-            LinearGradient(colors: [Color.white.opacity(0.9), Color.white.opacity(0.6)], startPoint: .top, endPoint: .bottom)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.06), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+        .buttonStyle(.plain)
     }
     
     private func timeString(_ date: Date) -> String {

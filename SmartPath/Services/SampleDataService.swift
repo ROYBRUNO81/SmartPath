@@ -9,11 +9,26 @@ import Foundation
 import SwiftData
 
 class SampleDataService {
-    static func populateSampleData(context: ModelContext) {
-        // Check if data already exists
-        if let tasks = try? context.fetch(FetchDescriptor<TaskRecord>()), !tasks.isEmpty {
-            return // Data already exists
+    static func clearExistingData(context: ModelContext) {
+        // Clear all existing data
+        if let tasks = try? context.fetch(FetchDescriptor<TaskRecord>()) {
+            for task in tasks { context.delete(task) }
         }
+        if let classes = try? context.fetch(FetchDescriptor<ClassRecord>()) {
+            for classRec in classes { context.delete(classRec) }
+        }
+        if let exams = try? context.fetch(FetchDescriptor<ExamRecord>()) {
+            for exam in exams { context.delete(exam) }
+        }
+        if let streaks = try? context.fetch(FetchDescriptor<StreakRecord>()) {
+            for streak in streaks { context.delete(streak) }
+        }
+        try? context.save()
+    }
+    
+    static func populateSampleData(context: ModelContext) {
+        // Clear existing data first (for testing)
+        clearExistingData(context: context)
         
         // Create a default Major and Schedule
         let defaultMajor = Major(name: "Computer Science", requiredCourses: ["CIS120", "CIS121"], creditRequired: 32)
@@ -100,7 +115,7 @@ class SampleDataService {
             days: ["Mon", "Wed"],
             startTime: time(10, 30),
             endTime: time(12, 0),
-            startDate: addDays(-30),
+            startDate: addDays(-7),
             endDate: addDays(60)
         )
         
@@ -113,7 +128,7 @@ class SampleDataService {
             days: ["Tue", "Thu"],
             startTime: time(13, 30),
             endTime: time(15, 0),
-            startDate: addDays(-30),
+            startDate: addDays(-7),
             endDate: addDays(60)
         )
         
@@ -126,7 +141,7 @@ class SampleDataService {
             days: ["Mon", "Wed", "Fri"],
             startTime: time(9, 0),
             endTime: time(10, 0),
-            startDate: addDays(-30),
+            startDate: addDays(-7),
             endDate: addDays(60)
         )
         
@@ -139,14 +154,44 @@ class SampleDataService {
             days: ["Tue", "Thu"],
             startTime: time(10, 30),
             endTime: time(12, 0),
-            startDate: addDays(-30),
+            startDate: addDays(-7),
             endDate: addDays(60)
         )
         
+        // Add a class for tomorrow (Wednesday) that will show up
+        let class5 = ClassRecord(
+            mode: "In Person",
+            className: "CIS 1951 - iOS Development",
+            room: "337",
+            building: "Towne Building",
+            teacher: "Prof. Johnson",
+            days: ["Wed"],
+            startTime: time(10, 30),
+            endTime: time(12, 0),
+            startDate: addDays(1),
+            endDate: addDays(1)
+        )
+        
+        // Add a class for Thursday that will show up
+        let class6 = ClassRecord(
+            mode: "In Person",
+            className: "BIOL 101 - Introduction to Biology",
+            room: "A6",
+            building: "Leidy Labs",
+            teacher: "Dr. Smith",
+            days: ["Thu"],
+            startTime: time(13, 30),
+            endTime: time(15, 0),
+            startDate: addDays(2),
+            endDate: addDays(2)
+        )
+
         context.insert(class1)
         context.insert(class2)
         context.insert(class3)
         context.insert(class4)
+        context.insert(class5)
+        context.insert(class6)
         
         // SAMPLE EXAMS
         

@@ -32,6 +32,7 @@ struct TimerView: View {
                         Text(titleText())
                             .font(.subheadline)
                             .foregroundColor(.black.opacity(0.6))
+                            .multilineTextAlignment(.center)
                     }
 
                     ZStack {
@@ -108,10 +109,28 @@ struct TimerView: View {
         .sheet(isPresented: $showSettings, onDismiss: { vm.openSettingsApplied() }) {
             TimerSettingsView()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PomodoroCompleted"))) { _ in
+            addPomodoroToStreak()
+        }
     }
 
     private func titleText() -> String {
         return "Find your focus\nShort sessions add up to big progress."
+    }
+    
+    private func addPomodoroToStreak() {
+        let today = Calendar.current.startOfDay(for: Date())
+        let streakRecord = StreakRecord(
+            date: today,
+            activityType: "pomodoro",
+            activityTitle: "Pomodoro Session",
+            activityDetails: "\(vm.focusMinutes) minute focus session"
+        )
+        context.insert(streakRecord)
+        try? context.save()
+        
+        // Notify streak view to refresh
+        NotificationCenter.default.post(name: NSNotification.Name("RefreshStreak"), object: nil)
     }
 }
 
@@ -183,6 +202,11 @@ struct TaskChecklist: View {
 
         var result: [(key: Date, task: TaskRecord)] = []
         for t in all {
+            // Skip completed tasks - they shouldn't appear in the checklist
+            if t.isCompleted {
+                continue
+            }
+            
             if t.occurs == "Repeating" {
                 if let s = t.startDate, let e = t.endDate, s <= end && e >= start {
                     result.append((key: start, task: t))
@@ -231,12 +255,15 @@ private struct ChecklistRow: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
+        HStack(spacing: 12) {
+            Button(action: action) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundColor(isSelected ? Color.spPrimary : .black.opacity(0.3))
                     .font(.system(size: 20, weight: .semibold))
+            }
+            .buttonStyle(.plain)
 
+            NavigationLink(destination: TaskDetailView(task: task)) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(task.title)
                         .font(.system(size: 15, weight: .medium))
@@ -245,12 +272,12 @@ private struct ChecklistRow: View {
                         .font(.system(size: 12))
                         .foregroundColor(.black.opacity(0.6))
                 }
-
-                Spacer()
             }
-            .padding(.vertical, 8)
+            .buttonStyle(.plain)
+
+            Spacer()
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 8)
     }
 
     private func dateString(_ d: Date) -> String {

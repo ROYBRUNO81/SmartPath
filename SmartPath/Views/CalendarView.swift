@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import SwiftData
 
 struct PlannerCalendarView: View {
     @StateObject private var vm = CalendarViewModel()
@@ -89,7 +90,7 @@ struct PlannerCalendarView: View {
             Button { withAnimation { vm.showMenu.toggle() } } label: {
                 Image(systemName: "line.3.horizontal")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(Color.spPrimary)
+                    .foregroundColor(Color(hex: "#3D8B7D"))
                     .padding(16)
                     .background(Color.white.opacity(0.7))
                     .clipShape(Circle())
@@ -100,7 +101,7 @@ struct PlannerCalendarView: View {
             HStack(spacing: 8) {
                 Button { vm.previous() } label: {
                     Image(systemName: "chevron.left")
-                        .foregroundColor(Color.spPrimary)
+                        .foregroundColor(Color(hex: "#3D8B7D"))
                         .padding(8)
                         .background(Color.white.opacity(0.9))
                         .clipShape(Circle())
@@ -114,7 +115,7 @@ struct PlannerCalendarView: View {
                     )
                 Button { vm.next() } label: {
                     Image(systemName: "chevron.right")
-                        .foregroundColor(Color.spPrimary)
+                        .foregroundColor(Color(hex: "#3D8B7D"))
                         .padding(8)
                         .background(Color.white.opacity(0.9))
                         .clipShape(Circle())
@@ -123,11 +124,11 @@ struct PlannerCalendarView: View {
             Spacer()
 
             Button("Today") { vm.goToday() }
-                .foregroundColor(Color.spPrimary)
+                .foregroundColor(Color(hex: "#3D8B7D"))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(
-                    Capsule().stroke(Color.spPrimary, lineWidth: 2)
+                    Capsule().stroke(Color(hex: "#3D8B7D"), lineWidth: 2)
                 )
 
         }
@@ -204,7 +205,7 @@ private struct DayView: View {
         // Vertical separator between labels and events area
         .overlay(alignment: .leading) {
             Rectangle()
-                .fill(Color.spSecondary.opacity(0.08))
+                .fill(Color(hex: "#2C5F54").opacity(0.08))
                 .frame(width: 1)
                 .offset(x: labelColumnWidth)
         }
@@ -218,7 +219,7 @@ private struct DayView: View {
             HStack(spacing: 0) {
                 Spacer().frame(width: startX)
                 Rectangle()
-                    .fill(Color.spPrimary)
+                    .fill(Color(hex: "#3D8B7D"))
                     .frame(height: 2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -226,7 +227,7 @@ private struct DayView: View {
 
             // Dot
             Circle()
-                .fill(Color.spPrimary)
+                .fill(Color(hex: "#3D8B7D"))
                 .frame(width: 8, height: 8)
                 .offset(x: startX - 4, y: y - 4)
         }
@@ -261,16 +262,16 @@ private struct DayView: View {
             Text(shortWeek)
                 .font(.caption)
                 .fontWeight(.semibold)
-                .foregroundColor(Color.spSecondary)
+                .foregroundColor(Color(hex: "#2C5F54"))
             Text("\(dayNum)")
                 .font(.headline)
-                .foregroundColor(isToday ? .white : Color.spPrimary)
+                .foregroundColor(isToday ? .white : Color(hex: "#3D8B7D"))
                 .frame(width: 30, height: 30)
                 .background(
-                    Circle().fill(isToday ? Color.spPrimary : Color.clear)
+                    Circle().fill(isToday ? Color(hex: "#3D8B7D") : Color.clear)
                 )
                 .overlay(
-                    Circle().stroke(Color.spPrimary, lineWidth: 2)
+                    Circle().stroke(Color(hex: "#3D8B7D"), lineWidth: 2)
                 )
         }
         .frame(width: 56, alignment: .center)
@@ -306,38 +307,55 @@ private struct EventCard: View {
     let event: DisplayEvent
     
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(event.title)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.black)
-                    Text(event.type)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(typeColor(event.type))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(typeColor(event.type).opacity(0.15))
-                        .cornerRadius(4)
+        NavigationLink(destination: destinationView) {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(event.title)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.black)
+                        Text(event.type)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(typeColor(event.type))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(typeColor(event.type).opacity(0.15))
+                            .cornerRadius(4)
+                    }
+                    if !event.subtitle.isEmpty {
+                        Text(event.subtitle)
+                            .font(.system(size: 12))
+                            .foregroundColor(.black.opacity(0.7))
+                    }
                 }
-                if !event.subtitle.isEmpty {
-                    Text(event.subtitle)
-                        .font(.system(size: 12))
-                        .foregroundColor(.black.opacity(0.7))
-                }
+                Spacer()
             }
-            Spacer()
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color(hex: event.colorHex).opacity(0.25))
+            .overlay(
+                Rectangle()
+                    .fill(Color(hex: event.colorHex))
+                    .frame(width: 4),
+                alignment: .leading
+            )
+            .cornerRadius(8)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color(hex: event.colorHex).opacity(0.25))
-        .overlay(
-            Rectangle()
-                .fill(Color(hex: event.colorHex))
-                .frame(width: 4),
-            alignment: .leading
-        )
-        .cornerRadius(8)
+        .buttonStyle(.plain)
+    }
+    
+    @ViewBuilder
+    private var destinationView: some View {
+        if let task = event.originalRecord as? TaskRecord {
+            TaskDetailView(task: task)
+        } else if let classRecord = event.originalRecord as? ClassRecord {
+            ClassDetailView(classRecord: classRecord)
+        } else if let exam = event.originalRecord as? ExamRecord {
+            ExamDetailView(exam: exam)
+        } else {
+            Text("Event Details")
+                .navigationTitle("Event")
+        }
     }
     
     private func typeColor(_ type: String) -> Color {
@@ -458,6 +476,24 @@ private struct SideFilterMenu: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 16) {
+                // Header with close button
+                HStack {
+                    Text("Calendar Filters")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.black)
+                    
+                    Spacer()
+                    
+                    Button(action: { withAnimation { vm.showMenu = false } }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.black.opacity(0.6))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.bottom, 8)
+                
                 Group {
                     modeRow(icon: "calendar", text: "Day", selected: vm.mode == .day) { vm.mode = .day }
                     modeRow(icon: "calendar", text: "Week", selected: vm.mode == .week) { vm.mode = .week }
@@ -476,10 +512,21 @@ private struct SideFilterMenu: View {
             .padding()
             .background(.ultraThinMaterial)
             .transition(.move(edge: .leading))
+                   .gesture(
+                       DragGesture()
+                           .onEnded { value in
+                               // Swipe left to close
+                               if value.translation.width < -50 {
+                                   withAnimation { vm.showMenu = false }
+                               }
+                           }
+                   )
 
-            Spacer()
+            // Tap area to close menu
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { withAnimation { vm.showMenu = false } }
         }
-        .onTapGesture { withAnimation { vm.showMenu = false } }
     }
 
     private func modeRow(icon: String, text: String, selected: Bool, action: @escaping () -> Void) -> some View {
@@ -491,7 +538,7 @@ private struct SideFilterMenu: View {
                 if selected { Image(systemName: "checkmark") }
             }
             .padding()
-            .background(RoundedRectangle(cornerRadius: 12).stroke(Color.spPrimary, lineWidth: selected ? 2 : 1).opacity(0.5))
+            .background(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "#3D8B7D"), lineWidth: selected ? 2 : 1).opacity(0.5))
         }
         .buttonStyle(.plain)
     }
@@ -503,11 +550,11 @@ private struct SideFilterMenu: View {
                 Text(label)
                 Spacer()
                 Image(systemName: isOn.wrappedValue ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(Color.spPrimary)
+                    .foregroundColor(Color(hex: "#3D8B7D"))
             }
             .padding()
             .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.4)))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.spPrimary.opacity(0.5), lineWidth: 2))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "#3D8B7D").opacity(0.5), lineWidth: 2))
         }
         .buttonStyle(.plain)
     }

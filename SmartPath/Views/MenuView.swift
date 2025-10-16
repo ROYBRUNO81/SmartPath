@@ -66,6 +66,23 @@ struct MenuView: View {
                                 )
                             }
                             
+                            NavigationLink(destination: OtherEventCategoryView(context: context)) {
+                                StatCardButton(
+                                    emoji: "📅",
+                                    title: "Other Events",
+                                    count: getOtherEventCount(),
+                                    subtitle: "All events",
+                                    gradientColors: [
+                                        Color.blue.opacity(0.15),
+                                        Color.white.opacity(0.7)
+                                    ],
+                                    countColor: Color.blue
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
+                        
+                        HStack(spacing: 12) {
                             NavigationLink(destination: TimerView()) {
                                 StatCardButton(
                                     emoji: "⏳",
@@ -221,6 +238,14 @@ struct MenuView: View {
         let now = Date()
         return exams.filter { exam in
             exam.date >= now
+        }.count
+    }
+    
+    private func getOtherEventCount() -> Int {
+        guard let otherEvents = try? context.fetch(FetchDescriptor<OtherEventRecord>()) else { return 0 }
+        let now = Date()
+        return otherEvents.filter { event in
+            event.date >= now
         }.count
     }
     

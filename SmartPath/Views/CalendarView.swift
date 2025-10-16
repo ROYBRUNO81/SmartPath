@@ -373,6 +373,8 @@ private struct EventCard: View {
             ClassDetailView(classRecord: classRecord)
         } else if let exam = event.originalRecord as? ExamRecord {
             ExamDetailView(exam: exam)
+        } else if let otherEvent = event.originalRecord as? OtherEventRecord {
+            OtherEventDetailView(event: otherEvent)
         } else {
             Text("Event Details")
                 .navigationTitle("Event")
@@ -384,6 +386,7 @@ private struct EventCard: View {
         case "Class": return Color(hex: "#9B59B6")
         case "Task": return Color(hex: "#3498DB")
         case "Exam": return Color(hex: "#1ABC9C")
+        case "Other": return Color(hex: "#E67E22")
         default: return Color.gray
         }
     }
@@ -524,6 +527,7 @@ private struct SideFilterMenu: View {
                 filterRow(color: .green, label: "Classes", isOn: $vm.showClasses)
                 filterRow(color: .purple, label: "Exams", isOn: $vm.showExams)
                 filterRow(color: .teal, label: "Tasks", isOn: $vm.showTasks)
+                filterRow(color: .blue, label: "Other Events", isOn: $vm.showOtherEvents)
                 filterRow(color: .orange, label: "Holidays", isOn: $vm.showHolidays)
                 filterRow(color: .green, label: "Interviews", isOn: $vm.showInterviews)
                 filterRow(color: .orange, label: "Coffee Chats", isOn: $vm.showCoffeeChats)

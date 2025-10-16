@@ -467,3 +467,168 @@ private func choicePill(_ value: String, selection: Binding<String>) -> some Vie
   .buttonStyle(.plain)
 }
 
+// MARK: - Other Event Form
+
+private struct OtherEventForm: View {
+  let context: ModelContext
+  let dismiss: DismissAction
+  @State private var title = ""
+  @State private var eventType = "Interview"
+  @State private var customType = ""
+  @State private var details = ""
+  @State private var mode = "In Person"
+  @State private var location = ""
+  @State private var date = Date()
+  @State private var time = Date()
+  @State private var durationMinutes = 60
+
+  private let eventTypes = ["Interview", "Code Chat", "Meeting", "Other"]
+  private let modes = ["In Person", "Online"]
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      // Title
+      VStack(alignment: .leading, spacing: 8) {
+        Text("Event Title")
+          .font(.headline)
+          .foregroundColor(.black)
+        TextField("Enter event title", text: $title)
+          .textFieldStyle(RoundedBorderTextFieldStyle())
+      }
+
+      // Event Type
+      VStack(alignment: .leading, spacing: 8) {
+        Text("Event Type")
+          .font(.headline)
+          .foregroundColor(.black)
+        HStack(spacing: 8) {
+          ForEach(eventTypes, id: \.self) { type in
+            choicePill(type, selection: $eventType)
+          }
+        }
+        
+        // Custom type field for "Other"
+        if eventType == "Other" {
+          TextField("Enter custom type", text: $customType)
+            .textFieldStyle(RoundedBorderTextFieldStyle())
+            .padding(.top, 8)
+        }
+      }
+
+      // Details
+      VStack(alignment: .leading, spacing: 8) {
+        Text("Details")
+          .font(.headline)
+          .foregroundColor(.black)
+        TextField("Enter event details (optional)", text: $details, axis: .vertical)
+          .textFieldStyle(RoundedBorderTextFieldStyle())
+          .lineLimit(3...6)
+      }
+
+      // Mode
+      VStack(alignment: .leading, spacing: 8) {
+        Text("Mode")
+          .font(.headline)
+          .foregroundColor(.black)
+        HStack(spacing: 8) {
+          ForEach(modes, id: \.self) { modeOption in
+            choicePill(modeOption, selection: $mode)
+          }
+        }
+      }
+
+      // Location
+      VStack(alignment: .leading, spacing: 8) {
+        Text(mode == "In Person" ? "Room/Building" : "Link")
+          .font(.headline)
+          .foregroundColor(.black)
+        TextField(mode == "In Person" ? "Enter room or building" : "Enter meeting link", text: $location)
+          .textFieldStyle(RoundedBorderTextFieldStyle())
+      }
+
+      // Date and Time
+      VStack(alignment: .leading, spacing: 8) {
+        Text("Date & Time")
+          .font(.headline)
+          .foregroundColor(.black)
+        HStack(spacing: 16) {
+          VStack(alignment: .leading, spacing: 4) {
+            Text("Date")
+              .font(.subheadline)
+              .foregroundColor(.black.opacity(0.7))
+            DatePicker("", selection: $date, displayedComponents: .date)
+              .datePickerStyle(CompactDatePickerStyle())
+          }
+          
+          VStack(alignment: .leading, spacing: 4) {
+            Text("Time")
+              .font(.subheadline)
+              .foregroundColor(.black.opacity(0.7))
+            DatePicker("", selection: $time, displayedComponents: .hourAndMinute)
+              .datePickerStyle(CompactDatePickerStyle())
+          }
+        }
+      }
+
+      // Duration
+      VStack(alignment: .leading, spacing: 8) {
+        Text("Duration")
+          .font(.headline)
+          .foregroundColor(.black)
+        HStack {
+          Text("\(durationMinutes) minutes")
+            .font(.subheadline)
+            .foregroundColor(.black)
+          Spacer()
+          Stepper("", value: $durationMinutes, in: 15...480, step: 15)
+            .labelsHidden()
+        }
+        .padding()
+        .background(
+          RoundedRectangle(cornerRadius: 8)
+            .fill(Color.white.opacity(0.8))
+            .overlay(
+              RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.spPrimary.opacity(0.3), lineWidth: 1)
+            )
+        )
+      }
+
+      // Save Button
+      Button(action: save) {
+        Text("Save Event")
+          .font(.headline)
+          .foregroundColor(.white)
+          .frame(maxWidth: .infinity)
+          .padding()
+          .background(
+            RoundedRectangle(cornerRadius: 12)
+              .fill(title.isEmpty ? Color.gray : Color.spPrimary)
+          )
+      }
+      .disabled(title.isEmpty)
+      .buttonStyle(.plain)
+    }
+  }
+
+  private func save() {
+    let event = OtherEventRecord(
+      title: title,
+      eventType: eventType,
+      customType: customType,
+      details: details,
+      mode: mode,
+      location: location,
+      date: date,
+      time: time,
+      durationMinutes: durationMinutes
+    )
+    
+    context.insert(event)
+    try? context.save()
+    NotificationCenter.default.post(name: NSNotification.Name("RefreshCalendar"), object: nil)
+    NotificationCenter.default.post(name: NSNotification.Name("RefreshMenuCounts"), object: nil)
+    dismiss()
+  }
+}
+

@@ -54,6 +54,7 @@ class CalendarViewModel: ObservableObject {
     @Published var showTasks: Bool = true
     @Published var showClasses: Bool = true
     @Published var showExams: Bool = true
+    @Published var showOtherEvents: Bool = true
     @Published var showHolidays: Bool = true
     @Published var showInterviews: Bool = true
     @Published var showCoffeeChats: Bool = true
@@ -203,6 +204,25 @@ class CalendarViewModel: ObservableObject {
                         endTime: classRec.endTime,
                         colorHex: classRec.colorHex,
                         originalRecord: classRec
+                    ))
+                }
+            }
+        }
+        
+        // Fetch Other Events
+        if showOtherEvents, let otherEvents = try? context.fetch(FetchDescriptor<OtherEventRecord>()) {
+            for otherEvent in otherEvents {
+                let eventDate = calendar.startOfDay(for: otherEvent.date)
+                if eventDate == targetDate {
+                    let displayType = otherEvent.eventType == "Other" ? otherEvent.customType : otherEvent.eventType
+                    displayEvents.append(DisplayEvent(
+                        title: otherEvent.title,
+                        subtitle: displayType,
+                        type: "Other",
+                        startTime: otherEvent.time,
+                        endTime: calendar.date(byAdding: .minute, value: otherEvent.durationMinutes, to: otherEvent.time) ?? otherEvent.time,
+                        colorHex: otherEvent.colorHex,
+                        originalRecord: otherEvent
                     ))
                 }
             }

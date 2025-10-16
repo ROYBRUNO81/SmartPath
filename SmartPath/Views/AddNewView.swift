@@ -8,7 +8,7 @@
 import SwiftUI
 import SwiftData
 
-private enum AddTab: String, CaseIterable, Identifiable { case task = "Tasks", classes = "Classes", exam = "Exams"; var id: String { rawValue } }
+private enum AddTab: String, CaseIterable, Identifiable { case task = "Tasks", classes = "Classes", exam = "Exams", other = "Other Events"; var id: String { rawValue } }
 
 struct AddNewView: View {
   @Environment(\.modelContext) private var context
@@ -25,6 +25,7 @@ struct AddNewView: View {
           case .task: TaskForm(context: context, dismiss: dismiss)
           case .classes: ClassForm(context: context, dismiss: dismiss)
           case .exam: ExamForm(context: context, dismiss: dismiss)
+          case .other: OtherEventForm(context: context, dismiss: dismiss)
           }
         }
       }

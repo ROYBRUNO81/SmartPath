@@ -147,9 +147,14 @@ private struct DayView: View {
     let anchor: Date
     let displayEvents: [DisplayEvent]
     @State private var now: Date = Date()
+    @StateObject private var viewModel = CalendarViewModel()
     private let hourRowHeight: CGFloat = 56
     private let labelColumnWidth: CGFloat = 64 // label (56) + left padding (8)
     private let topInsetForDayBadge: CGFloat = 52
+    
+    private var eventGroups: [EventGroup] {
+        viewModel.groupOverlappingEvents(displayEvents)
+    }
 
     var body: some View {
         ScrollView {
@@ -280,10 +285,16 @@ private struct DayView: View {
     
     private var eventsOverlay: some View {
         GeometryReader { geometry in
-            ForEach(displayEvents) { event in
-                EventCard(event: event)
-                    .offset(x: labelColumnWidth + 4, y: yOffset(for: event.startTime))
-                    .frame(width: geometry.size.width - labelColumnWidth - 8, height: eventHeight(event))
+            ForEach(eventGroups) { group in
+                ForEach(group.events) { event in
+                    let layout = group.layoutProperties(for: event, totalWidth: geometry.size.width - labelColumnWidth - 8)
+                    EventCard(event: event)
+                        .offset(
+                            x: labelColumnWidth + 4 + layout.x,
+                            y: yOffset(for: group.startTime)
+                        )
+                        .frame(width: layout.width, height: eventHeight(event))
+                }
             }
         }
     }
@@ -297,9 +308,18 @@ private struct DayView: View {
     }
     
     private func eventHeight(_ event: DisplayEvent) -> CGFloat {
-        let duration = event.endTime.timeIntervalSince(event.startTime)
-        let hours = duration / 3600.0
-        return CGFloat(hours) * hourRowHeight
+        // Find the group this event belongs to
+        if let group = eventGroups.first(where: { $0.events.contains { $0.id == event.id } }) {
+            // Use the group's duration for consistent height across overlapping events
+            let duration = group.endTime.timeIntervalSince(group.startTime)
+            let hours = duration / 3600.0
+            return CGFloat(hours) * hourRowHeight
+        } else {
+            // Fallback to individual event duration
+            let duration = event.endTime.timeIntervalSince(event.startTime)
+            let hours = duration / 3600.0
+            return CGFloat(hours) * hourRowHeight
+        }
     }
 }
 
@@ -308,38 +328,39 @@ private struct EventCard: View {
     
     var body: some View {
         NavigationLink(destination: destinationView) {
-            HStack(alignment: .top, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(event.title)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.black)
-                        Text(event.type)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(typeColor(event.type))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(typeColor(event.type).opacity(0.15))
-                            .cornerRadius(4)
-                    }
-                    if !event.subtitle.isEmpty {
-                        Text(event.subtitle)
-                            .font(.system(size: 12))
-                            .foregroundColor(.black.opacity(0.7))
-                    }
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(event.title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.black)
+                        .lineLimit(1)
+                    Spacer()
+                    Text(event.type)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(typeColor(event.type))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(typeColor(event.type).opacity(0.15))
+                        .cornerRadius(3)
+                }
+                if !event.subtitle.isEmpty {
+                    Text(event.subtitle)
+                        .font(.system(size: 10))
+                        .foregroundColor(.black.opacity(0.7))
+                        .lineLimit(2)
                 }
                 Spacer()
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 6)
             .background(Color(hex: event.colorHex).opacity(0.25))
             .overlay(
                 Rectangle()
                     .fill(Color(hex: event.colorHex))
-                    .frame(width: 4),
+                    .frame(width: 3),
                 alignment: .leading
             )
-            .cornerRadius(8)
+            .cornerRadius(6)
         }
         .buttonStyle(.plain)
     }

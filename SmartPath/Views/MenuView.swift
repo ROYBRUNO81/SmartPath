@@ -135,18 +135,85 @@ struct MenuView: View {
     
     private func getTaskCount() -> Int {
         guard let tasks = try? context.fetch(FetchDescriptor<TaskRecord>()) else { return 0 }
+        let cal = Calendar.current
         let now = Date()
+        let today = cal.startOfDay(for: now)
+        let endDate = cal.date(byAdding: .day, value: 14, to: today)!
+        
         return tasks.filter { task in
-            !task.isCompleted && task.dueDate >= now
+            // Skip completed tasks
+            if task.isCompleted {
+                return false
+            }
+            
+            if task.occurs == "Repeating" {
+                // For repeating tasks, check if they have any occurrences in the next 14 days
+                if let start = task.startDate, let end = task.endDate {
+                    let taskStartDate = cal.startOfDay(for: start)
+                    let taskEndDate = cal.startOfDay(for: end)
+                    let isInDateRange = today <= taskEndDate && endDate >= taskStartDate
+                    
+                    if isInDateRange {
+                        // Check if any of the scheduled days fall within the next 14 days
+                        var current = max(today, taskStartDate)
+                        let rangeEnd = min(endDate, taskEndDate)
+                        
+                        while current <= rangeEnd {
+                            let weekdayFormatter = DateFormatter()
+                            weekdayFormatter.dateFormat = "EEE"
+                            let dayAbbr = weekdayFormatter.string(from: current).prefix(3)
+                            
+                            if task.days.contains(where: { $0.prefix(3) == dayAbbr }) {
+                                return true
+                            }
+                            current = cal.date(byAdding: .day, value: 1, to: current) ?? current
+                        }
+                    }
+                }
+                return false
+            } else {
+                // For one-time tasks, check if due date is within next 14 days
+                let taskDate = cal.startOfDay(for: task.dueDate)
+                return taskDate >= today && taskDate <= endDate
+            }
         }.count
     }
     
     private func getClassCount() -> Int {
         guard let classes = try? context.fetch(FetchDescriptor<ClassRecord>()) else { return 0 }
+        let cal = Calendar.current
         let now = Date()
-        return classes.filter { classRec in
-            classRec.endDate >= now
-        }.count
+        
+        // Get current week start (Monday)
+        let currentWeekStart = cal.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+        let weekDays = (0..<7).compactMap { dayOffset in
+            cal.date(byAdding: .day, value: dayOffset, to: currentWeekStart)
+        }
+        
+        var totalCount = 0
+        
+        for classRec in classes {
+            // Only include classes that haven't ended yet
+            if classRec.endDate < now {
+                continue
+            }
+            
+            for day in weekDays {
+                // Check if this class occurs on this day of the week
+                let weekdayFormatter = DateFormatter()
+                weekdayFormatter.dateFormat = "EEE"
+                let dayAbbr = weekdayFormatter.string(from: day).prefix(3)
+                
+                if classRec.days.contains(where: { $0.prefix(3) == dayAbbr }) {
+                    // Check if the class is active on this specific date
+                    if classRec.startDate <= day && classRec.endDate >= day {
+                        totalCount += 1
+                    }
+                }
+            }
+        }
+        
+        return totalCount
     }
     
     private func getExamCount() -> Int {
@@ -258,19 +325,12 @@ struct TaskCategoryView: View {
 // MARK: - Class Category View
 struct ClassCategoryView: View {
     let context: ModelContext
-    @State private var selectedTab = 0
     
     var body: some View {
         ZStack {
             GradientBackground().ignoresSafeArea()
             
-            SwipeableTabView(tabs: ["Current", "Past"], selectedIndex: $selectedTab) { index in
-                if index == 0 {
-                    CurrentClassView(context: context)
-                } else {
-                    PastClassView(context: context)
-                }
-            }
+            WeeklyClassView(context: context)
         }
         .navigationTitle("Classes")
         .navigationBarTitleDisplayMode(.large)
@@ -332,7 +392,8 @@ struct HolidayCategoryView: View {
 // MARK: - Current Task View
 struct CurrentTaskView: View {
     let context: ModelContext
-    @State private var daysShown = 7
+    @State private var daysShown = 14
+    @State private var refreshTrigger = false
     
     private var grouped: [(date: Date, items: [TaskRecord])] {
         guard let tasks = try? context.fetch(FetchDescriptor<TaskRecord>()) else { return [] }
@@ -346,11 +407,6 @@ struct CurrentTaskView: View {
         for task in tasks {
             // Skip completed tasks - they should only appear in past tasks
             if task.isCompleted {
-                continue
-            }
-            
-            // Skip overdue tasks - they should only appear in past tasks
-            if task.dueDate < now {
                 continue
             }
             
@@ -404,6 +460,7 @@ struct CurrentTaskView: View {
                                 }
                             }
                         }
+                        .id(refreshTrigger) // Force refresh when trigger changes
                     }
                 }
                 .padding(.vertical)
@@ -477,8 +534,42 @@ struct PastTaskView: View {
                 }
             }
             
-            // Include completed tasks OR overdue tasks (not completed)
-            if shouldInclude && (task.isCompleted || task.dueDate < now) {
+            // For completed tasks, only show if they are actually past (14+ days old)
+            if task.isCompleted {
+                let daysSinceCompletion = Calendar.current.dateComponents([.day], from: task.dueDate, to: now).day ?? 0
+                if daysSinceCompletion >= 14 {
+                    if task.occurs == "Repeating" {
+                        if let start = task.startDate, let end = task.endDate, start <= range.end && end >= range.start {
+                            shouldInclude = true
+                            taskDate = range.end
+                        }
+                    } else {
+                        let dueDate = Calendar.current.startOfDay(for: task.dueDate)
+                        if dueDate >= range.start && dueDate < range.end {
+                            shouldInclude = true
+                            taskDate = dueDate
+                        }
+                    }
+                }
+            } else {
+                // For incomplete tasks, only show if they are overdue
+                if task.dueDate < now {
+                    if task.occurs == "Repeating" {
+                        if let start = task.startDate, let end = task.endDate, start <= range.end && end >= range.start {
+                            shouldInclude = true
+                            taskDate = range.end
+                        }
+                    } else {
+                        let dueDate = Calendar.current.startOfDay(for: task.dueDate)
+                        if dueDate >= range.start && dueDate < range.end {
+                            shouldInclude = true
+                            taskDate = dueDate
+                        }
+                    }
+                }
+            }
+            
+            if shouldInclude {
                 if dateMap[taskDate] == nil { dateMap[taskDate] = [] }
                 dateMap[taskDate]?.append(task)
             }
@@ -554,40 +645,50 @@ struct PastTaskView: View {
 }
 
 // MARK: - Current Class View
-struct CurrentClassView: View {
+// MARK: - Weekly Class View
+struct WeeklyClassView: View {
     let context: ModelContext
-    @State private var daysShown = 7
+    @State private var refreshTrigger = false
+    @State private var currentWeekStart = Calendar.current.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
     
-    private var grouped: [(date: Date, items: [ClassRecord])] {
+    private var weekDays: [Date] {
+        let cal = Calendar.current
+        return (0..<7).compactMap { dayOffset in
+            cal.date(byAdding: .day, value: dayOffset, to: currentWeekStart)
+        }
+    }
+    
+    private var weeklySchedule: [(day: Date, classes: [ClassRecord])] {
         guard let allClasses = try? context.fetch(FetchDescriptor<ClassRecord>()) else { return [] }
         let cal = Calendar.current
-        let start = cal.startOfDay(for: Date())
-        let end = cal.date(byAdding: .day, value: daysShown, to: start)!
+        let now = Date()
         
-        var dateMap: [Date: [ClassRecord]] = [:]
-        
-        for classRec in allClasses {
-            if classRec.startDate <= end && classRec.endDate >= start {
-                // Generate class occurrences for each day in the range
-                var current = max(start, cal.startOfDay(for: classRec.startDate))
-                let rangeEnd = min(end, cal.startOfDay(for: classRec.endDate))
-                
-                while current < rangeEnd {
-                    let weekdayFormatter = DateFormatter()
-                    weekdayFormatter.dateFormat = "EEE"
-                    let dayAbbr = weekdayFormatter.string(from: current).prefix(3)
-                    
-                    if classRec.days.contains(where: { $0.prefix(3) == dayAbbr }) {
-                        if dateMap[current] == nil { dateMap[current] = [] }
-                        dateMap[current]?.append(classRec)
-                    }
-                    current = cal.date(byAdding: .day, value: 1, to: current) ?? current
+        return weekDays.map { day in
+            let dayStart = cal.startOfDay(for: day)
+            let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart)!
+            
+            let classesForDay = allClasses.compactMap { classRec -> ClassRecord? in
+                // Only include classes that haven't ended yet
+                if classRec.endDate < now {
+                    return nil
                 }
+                
+                // Check if this class occurs on this day of the week
+                let weekdayFormatter = DateFormatter()
+                weekdayFormatter.dateFormat = "EEE"
+                let dayAbbr = weekdayFormatter.string(from: day).prefix(3)
+                
+                if classRec.days.contains(where: { $0.prefix(3) == dayAbbr }) {
+                    // Check if the class is active on this specific date
+                    if classRec.startDate <= day && classRec.endDate >= day {
+                        return classRec
+                    }
+                }
+                return nil
             }
+            
+            return (day: day, classes: classesForDay.sorted { $0.startTime < $1.startTime })
         }
-        
-        return dateMap.map { (date: $0.key, items: $0.value.sorted { $0.startTime < $1.startTime }) }
-            .sorted { $0.date < $1.date }
     }
     
     var body: some View {
@@ -595,110 +696,176 @@ struct CurrentClassView: View {
             GradientBackground().ignoresSafeArea()
             
             ScrollView {
-                LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
-                    if grouped.isEmpty {
-                        Text("No upcoming classes")
-                            .font(.subheadline)
-                            .foregroundColor(.black.opacity(0.6))
-                            .padding()
-                    } else {
-                        ForEach(grouped, id: \.date) { bucket in
-                            Section(header: header(bucket.date, count: bucket.items.count)) {
-                                ForEach(bucket.items, id: \.self) { item in
-                                    ClassRow(classRec: item)
-                                        .padding(.horizontal)
-                                }
-                            }
+                VStack(spacing: 16) {
+                    // Week navigation
+                    weekNavigationHeader
+                    
+                    // Weekly schedule
+                    LazyVStack(spacing: 12) {
+                        ForEach(weeklySchedule, id: \.day) { dayData in
+                            WeeklyDayRow(day: dayData.day, classes: dayData.classes)
                         }
                     }
+                    .padding(.horizontal)
                 }
                 .padding(.vertical)
             }
         }
-        .navigationTitle("Classes")
-        .navigationBarTitleDisplayMode(.large)
-        .safeAreaInset(edge: .bottom) {
-            Color.clear.frame(height: 80)
-        }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshMenuCounts"))) { _ in
-            // Refresh the view when data changes
+            refreshTrigger.toggle()
         }
     }
     
-    private func header(_ date: Date, count: Int) -> some View {
+    private var weekNavigationHeader: some View {
         HStack {
-            Text(date, style: .date)
-                .font(.headline)
-                .foregroundColor(.black)
+            Button(action: { previousWeek() }) {
+                Image(systemName: "chevron.left")
+                    .font(.title2)
+                    .foregroundColor(Color.spPrimary)
+            }
+            
             Spacer()
-            Text("\(count)")
+            
+            Text(weekRangeText)
                 .font(.headline)
                 .foregroundColor(.black)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(Color.white.opacity(0.6))
-                .clipShape(Capsule())
+            
+            Spacer()
+            
+            Button(action: { nextWeek() }) {
+                Image(systemName: "chevron.right")
+                    .font(.title2)
+                    .foregroundColor(Color.spPrimary)
+            }
         }
         .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(BlurView(style: .systemMaterial))
+    }
+    
+    private var weekRangeText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        
+        let startDate = weekDays.first!
+        let endDate = weekDays.last!
+        
+        return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
+    }
+    
+    private func previousWeek() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentWeekStart = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: currentWeekStart) ?? currentWeekStart
+        }
+    }
+    
+    private func nextWeek() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentWeekStart = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: currentWeekStart) ?? currentWeekStart
+        }
     }
 }
 
-// MARK: - Past Class View
-struct PastClassView: View {
-    let context: ModelContext
-    @State private var daysShown = 14
+// MARK: - Weekly Day Row
+struct WeeklyDayRow: View {
+    let day: Date
+    let classes: [ClassRecord]
     
-    var classes: [ClassRecord] {
-        guard let allClasses = try? context.fetch(FetchDescriptor<ClassRecord>()) else { return [] }
-        let cal = Calendar.current
-        let now = cal.startOfDay(for: Date())
-        let startDate = cal.date(byAdding: .day, value: -daysShown, to: now) ?? now
-        
-        return allClasses.filter { classRec in
-            classRec.startDate < now && classRec.endDate >= startDate
-        }
+    private var dayName: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return formatter.string(from: day)
+    }
+    
+    private var dayNumber: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d"
+        return formatter.string(from: day)
+    }
+    
+    private var isToday: Bool {
+        Calendar.current.isDate(day, inSameDayAs: Date())
     }
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                if classes.isEmpty {
-                    Text("No past classes")
-                        .font(.subheadline)
-                        .foregroundColor(.black.opacity(0.6))
-                        .padding()
-                } else {
-                    ForEach(classes) { classRec in
-                        ClassRow(classRec: classRec)
-                            .padding(.horizontal)
-                    }
-                }
+        HStack(spacing: 16) {
+            // Day info
+            VStack(spacing: 4) {
+                Text(dayName)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.black.opacity(0.7))
                 
-                if canShowMore {
-                    Button(action: { showMore() }) {
-                        Text("Show More")
-                            .font(.subheadline)
-                            .foregroundColor(Color.spPrimary)
-                            .padding()
+                Text(dayNumber)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(isToday ? .white : .black)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        Circle()
+                            .fill(isToday ? Color.spPrimary : Color.clear)
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(Color.spPrimary, lineWidth: isToday ? 0 : 2)
+                    )
+            }
+            .frame(width: 60)
+            
+            // Class count
+            Text("\(classes.count)")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.black)
+                .frame(width: 40)
+            
+            // Classes list
+            if classes.isEmpty {
+                Text("No classes")
+                    .font(.subheadline)
+                    .foregroundColor(.black.opacity(0.5))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(classes, id: \.self) { classRec in
+                        HStack {
+                            Circle()
+                                .fill(Color(hex: classRec.colorHex))
+                                .frame(width: 8, height: 8)
+                            
+                            Text(classRec.className)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.black)
+                            
+                            Spacer()
+                            
+                            Text(timeString(classRec.startTime))
+                                .font(.caption)
+                                .foregroundColor(.black.opacity(0.6))
+                        }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.vertical)
         }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.spPrimary.opacity(0.2), lineWidth: 1)
+                )
+        )
+        .shadow(color: Color.spSecondary.opacity(0.1), radius: 4, x: 0, y: 2)
     }
     
-    var canShowMore: Bool {
-        return daysShown < 98
-    }
-    
-    func showMore() {
-        if daysShown == 14 { daysShown = 28 }
-        else if daysShown == 28 { daysShown = 56 }
-        else if daysShown == 56 { daysShown = 98 }
+    private func timeString(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: date)
     }
 }
+
 
 // MARK: - Current Exam View
 struct CurrentExamView: View {

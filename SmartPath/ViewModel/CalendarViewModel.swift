@@ -28,6 +28,22 @@ struct DisplayEvent: Identifiable {
     let originalRecord: Any // Can be TaskRecord, ClassRecord, or ExamRecord
 }
 
+// Model for handling overlapping events
+struct EventGroup: Identifiable {
+    let id = UUID()
+    let events: [DisplayEvent]
+    let startTime: Date
+    let endTime: Date
+    
+    // Calculate layout properties for each event in the group
+    func layoutProperties(for event: DisplayEvent, totalWidth: CGFloat) -> (x: CGFloat, width: CGFloat) {
+        let eventIndex = events.firstIndex { $0.id == event.id } ?? 0
+        let eventWidth = totalWidth / CGFloat(events.count)
+        let x = CGFloat(eventIndex) * eventWidth
+        return (x: x, width: eventWidth)
+    }
+}
+
 @MainActor
 class CalendarViewModel: ObservableObject {
     @Published var mode: CalendarMode = .day
@@ -193,6 +209,53 @@ class CalendarViewModel: ObservableObject {
         }
         
         return displayEvents.sorted { $0.startTime < $1.startTime }
+    }
+    
+    // Group overlapping events together
+    func groupOverlappingEvents(_ events: [DisplayEvent]) -> [EventGroup] {
+        guard !events.isEmpty else { return [] }
+        
+        let sortedEvents = events.sorted { $0.startTime < $1.startTime }
+        var groups: [EventGroup] = []
+        var currentGroup: [DisplayEvent] = []
+        var groupEndTime: Date = Date.distantPast
+        
+        for event in sortedEvents {
+            // Check if this event overlaps with the current group
+            // Events overlap if one starts before the other ends
+            if event.startTime < groupEndTime {
+                // Event overlaps, add to current group
+                currentGroup.append(event)
+                // Update group end time to the latest end time
+                groupEndTime = max(groupEndTime, event.endTime)
+            } else {
+                // No overlap, finalize current group and start new one
+                if !currentGroup.isEmpty {
+                    let groupStartTime = currentGroup.first!.startTime
+                    groups.append(EventGroup(
+                        events: currentGroup,
+                        startTime: groupStartTime,
+                        endTime: groupEndTime
+                    ))
+                }
+                
+                // Start new group
+                currentGroup = [event]
+                groupEndTime = event.endTime
+            }
+        }
+        
+        // Don't forget the last group
+        if !currentGroup.isEmpty {
+            let groupStartTime = currentGroup.first!.startTime
+            groups.append(EventGroup(
+                events: currentGroup,
+                startTime: groupStartTime,
+                endTime: groupEndTime
+            ))
+        }
+        
+        return groups
     }
 
     // Old data sources for compatibility

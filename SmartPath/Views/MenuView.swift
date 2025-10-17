@@ -114,12 +114,12 @@ struct MenuView: View {
                                 )
                             }
                             
-                            NavigationLink(destination: OtherEventCategoryView(context: context)) {
+                            NavigationLink(destination: StreakView()) {
                                 StatCardButton(
-                                    emoji: "🎯",
-                                    title: "Other Events",
-                                    count: getOtherEventCount(),
-                                    subtitle: "Interviews & more",
+                                    emoji: "📊",
+                                    title: "Statistics",
+                                    count: 0,
+                                    subtitle: "View progress",
                                     gradientColors: [
                                         Color.purple.opacity(0.15),
                                         Color.white.opacity(0.7)
@@ -272,9 +272,6 @@ struct MenuView: View {
         return streak
     }
     
-    private func getOtherEventCount() -> Int {
-        return (try? context.fetch(FetchDescriptor<OtherEventRecord>()))?.count ?? 0
-    }
 }
 
 // MARK: - Swipeable Tab System

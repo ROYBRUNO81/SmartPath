@@ -62,3 +62,10 @@ SmartPath focuses on what actually matters:
 ---
 
 *Built with ❤️ for students who want to succeed without sacrificing their sanity.*
+
+<img src="pic1.png" alt="demo" width="30%">
+<img src="pic2.png" alt="demo" width="30%">
+<img src="pic4.png" alt="demo" width="30%">
+<img src="pic5.png" alt="demo" width="30%">
+<img src="pic6.png" alt="demo" width="30%">
+<img src="pic8.png" alt="demo" width="30%">
